@@ -9,12 +9,12 @@ export const expenseCategories: ExpenseCategoriesType = {
         icon: Icons.Storefront,
         bgColor: "#819abd"
     },
-    groceries: {
-        label: "Comestibles",
-        value: "groceries",
-        icon: Icons.ShoppingCart,
-        bgColor: "#4B5563"
-    },
+    // groceries: {
+    //     label: "Comestibles",
+    //     value: "groceries",
+    //     icon: Icons.ShoppingCart,
+    //     bgColor: "#4B5563"
+    // },
     rent: {
         label: "Renta",
         value: "rent",

@@ -19,9 +19,12 @@ export type OcrExtractedData = {
 };
 
 const CATEGORY_KEYWORDS: Record<string, string> = {
-  supermercado: 'groceries',
-  mercadona: 'groceries',
-  oxxo: 'groceries',
+  
+  supermercado: 'supermarket',
+  mercadona: 'supermarket',
+  perlitas: 'supermarket',
+  galones: 'supermarket',
+  oxxo: 'supermarket',
   comida: 'dining',
   restaurante: 'dining',
   delivery: 'dining',
