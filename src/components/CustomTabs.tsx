@@ -16,6 +16,15 @@ export default function CustomTabs({ state, descriptors, navigation }: BottomTab
         />
       );
     },
+    codoxia: (isFocused: boolean) => {
+      return (
+        <Icons.MagicWandIcon
+          size={verticalScale(30)}
+          weight={isFocused ? "fill" : "regular"}
+          color={isFocused ? colors.primary : colors.neutral400}
+        />
+      );
+    },
     statistics: (isFocused: boolean) => {
       return (
         <Icons.ChartBar
