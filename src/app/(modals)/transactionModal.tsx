@@ -80,6 +80,11 @@ const TransactionModal = () => {
     return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
   };
 
+  const formatMoney = (value: number | string | null | undefined) => {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00';
+  };
+
   const onValueChange = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setTransaction((prev) => ({ ...prev, date: selectedDate }));
@@ -258,7 +263,7 @@ const TransactionModal = () => {
               selectedTextStyle={styles.dropdownSelectedText}
               iconStyle={styles.dropdownIcon}
               data={wallets.map(wallet => ({
-                label: `${wallet?.name} ($${wallet.amount})`,
+                label: `${wallet?.name} ($${formatMoney(wallet?.amount)})`,
                 value: wallet.id,
               }))}
               maxHeight={300}

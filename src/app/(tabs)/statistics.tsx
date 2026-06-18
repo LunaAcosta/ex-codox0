@@ -81,7 +81,7 @@ const Statistics = () => {
         }} showsVerticalScrollIndicator={false}>
 
           <SegmentedControl
-            values={['Weekly', 'Monthly', 'Yearly']}
+            values={['Semana', 'Mes', 'Año']}
             selectedIndex={activeIndex}
             onChange={(event) => {
               setActiveIndex(event.nativeEvent.selectedSegmentIndex);

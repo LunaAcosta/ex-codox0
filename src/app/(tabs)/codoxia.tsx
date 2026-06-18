@@ -1,17 +1,58 @@
 import Button from '@/components/Button'
+import FinancialAssistantModal from '@/components/FinancialAssistantModal'
 import Header from '@/components/Header'
 import ScreenWrapper from '@/components/ScreenWrapper'
 import { colors, spacingX, spacingY } from '@/constants/theme'
+import useFetchData from '@/hooks/useFetchData'
+import { where } from 'firebase/firestore'
 import * as Icons from "phosphor-react-native"
+import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { verticalScale } from '../../../utils/styling'
+import { useAuth } from '../../../contexts/authContext'
+import { TransactionType, WalletType } from '../../../types'
+import { verticalScale } from "../../../utils/styling"
 
 const CodoxIA = () => {
+  const [showAssistant, setShowAssistant] = useState(false);
+  const { user } = useAuth();
+  const uid = user?.uid ?? '';
+
+  // Fetch transactions for the user
+  const transactionConstraints = useMemo(() => [
+    where("uid", "==", uid)
+  ], [uid]);
+
+  const {
+    data: transactions,
+    loading: transactionsLoading,
+  } = useFetchData<TransactionType>("transactions", transactionConstraints);
+
+  // Fetch wallets for the user
+  const walletConstraints = useMemo(() => [
+    where("uid", "==", uid)
+  ], [uid]);
+
+  const {
+    data: wallets,
+    loading: walletsLoading,
+  } = useFetchData<WalletType>("wallets", walletConstraints);
+
+  const handleOpenAssistant = () => {
+    setShowAssistant(true);
+  };
+
+  const handleCloseAssistant = () => {
+    setShowAssistant(false);
+  };
+
   return (
     <ScreenWrapper>
       <View style={styles.container}>
-        <Header title='CodoxIA' style={{ marginVertical: spacingY._10 }} />
-        <Button style={styles.floatingButton}>
+        <Header title='Codox IA' style={{ marginVertical: spacingY._10 }} />
+        <Button 
+          style={styles.floatingButton}
+          onPress={handleOpenAssistant}
+        >
           <Icons.ChatCircleDotsIcon
             color={colors.white}
             weight='bold'
@@ -19,6 +60,13 @@ const CodoxIA = () => {
           />
         </Button>
       </View>
+      
+      <FinancialAssistantModal
+        isVisible={showAssistant}
+        onClose={handleCloseAssistant}
+        transactions={transactions}
+        wallets={wallets}
+      />
     </ScreenWrapper>
   )
 }

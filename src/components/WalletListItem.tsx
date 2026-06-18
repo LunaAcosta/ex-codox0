@@ -25,6 +25,8 @@ const WalletListItem = ({
             }
         })
     }
+    const amountValue = Number(item?.amount ?? 0)
+    const formattedAmount = Number.isFinite(amountValue) ? amountValue.toFixed(2) : '0.00'
     return (
         <Animated.View
             entering={FadeInDown.delay(index * 50)
@@ -41,7 +43,7 @@ const WalletListItem = ({
                 </View>
                 <View style={styles.nameContainer}>
                     <Typo size={16}> {item?.name}</Typo>
-                    <Typo size={12} color={colors.neutral400}> $ {item?.amount}</Typo>
+                    <Typo size={12} color={colors.neutral400}> $ {formattedAmount}</Typo>
                 </View>
                 <Icons.CaretRight
                     size={verticalScale(20)}
