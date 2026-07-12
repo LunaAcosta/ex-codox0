@@ -45,6 +45,8 @@ export type IcoComponent = React.ComponentType<{
     fill?: string;
 }>;
 
+
+
 export type IconProps = {
     name?: string;
     color?: string;
@@ -169,3 +171,4 @@ export type WalletType = {
     uid?: string;
     created?: Date;
 }
+
