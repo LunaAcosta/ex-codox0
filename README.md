@@ -13,7 +13,7 @@ A brief description of what this project does and who it's for
 **Integrantes del equipo**
 
 Emely Alexandra Guevara Jimenez   
-Natalia Alexandra Trigueros Blanco
+Natalia Alexandra Trigueros Blanco        
 Kevin Alexander Luna Acosta
 
 
