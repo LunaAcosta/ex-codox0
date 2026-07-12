@@ -14,6 +14,7 @@ A brief description of what this project does and who it's for
 
 Emely Alexandra Guevara Jimenez   
 Natalia Alexandra Trigueros Blanco
+Kevin Alexander Luna Acosta
 
 
 ## 2. Descripción del problema
