@@ -2,24 +2,22 @@ import { StyleSheet, View } from 'react-native'
 import { HeaderProps } from '../types'
 import Typo from './Typo'
 
-const Header = ({ title = "", leftIcon, style }: HeaderProps) => {
+const Header = ({ title = "", leftIcon, rightIcon, style }: HeaderProps) => {
     return (
         <View style={[styles.container, style]}>
-            {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
+            <View style={styles.side}>{leftIcon}</View>
             {
                 title && (
                     <Typo
                         size={22}
                         fontWeight={"600"}
-                        style={{
-                            textAlign: "center",
-                            width: leftIcon ? "82%" : "100%"
-                        }}
+                        style={styles.title}
                     >
                         {title}
                     </Typo>
                 )
             }
+            <View style={[styles.side, styles.rightIcon]}>{rightIcon}</View>
 
         </View>
     )
@@ -31,9 +29,10 @@ const styles = StyleSheet.create({
     container: {
         width: "100%",
         alignItems: "center",
-        flexDirection: "row"
+        flexDirection: "row",
+        minHeight: 44,
     },
-    leftIcon: {
-        alignSelf: "flex-start",
-    }
+    side: { width: 44, alignItems: 'flex-start' },
+    rightIcon: { alignItems: 'flex-end' },
+    title: { flex: 1, textAlign: "center" },
 })

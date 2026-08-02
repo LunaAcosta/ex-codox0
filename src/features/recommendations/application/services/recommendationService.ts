@@ -1,19 +1,7 @@
-import {
-  addDoc,
-  collection,
-  doc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  setDoc,
-  Timestamp,
-  updateDoc
-} from 'firebase/firestore';
-import { OpenAI } from 'openai';
-import { firebase } from '../../../../core/config/firebase';
+import { Timestamp } from 'firebase/firestore';
 import { expenseCategories } from '../../../../shared/constants/data';
 import { TransactionType, WalletType } from '../../../../shared/types';
+import { getApiRecommendationHistory, markApiRecommendationRead, runFinanceAiCapability } from '../../../financeApi/application/financeApiService';
 
 // ─────────────────────────────────────────────
 // Types
@@ -25,7 +13,7 @@ export type RecommendationRecord = {
   text: string;
   date: string; // YYYY-MM-DD
   read: boolean;
-  createdAt: Date | Timestamp;
+  createdAt: Date | Timestamp | string;
 };
 
 export type FinancialAlert = {
@@ -275,9 +263,6 @@ export const analyzeFinancials = (
   const personalizedRecommendations: string[] = buildRecommendations({
     savingsRate,
     categoryAnalysis,
-    currentMonthIncome,
-    currentMonthExpenses,
-    estimatedSavings,
     daysRemaining,
   });
 
@@ -311,9 +296,6 @@ export const analyzeFinancials = (
 interface RecommendationInput {
   savingsRate: number;
   categoryAnalysis: CategoryAnalysis[];
-  currentMonthIncome: number;
-  currentMonthExpenses: number;
-  estimatedSavings: number;
   daysRemaining: number | null;
 }
 
@@ -322,9 +304,6 @@ const buildRecommendations = (input: RecommendationInput): string[] => {
   const {
     savingsRate,
     categoryAnalysis,
-    currentMonthIncome,
-    currentMonthExpenses,
-    estimatedSavings,
     daysRemaining,
   } = input;
 
@@ -389,39 +368,8 @@ const buildRecommendations = (input: RecommendationInput): string[] => {
 // Daily Tip Generation
 // ─────────────────────────────────────────────
 
-const openaiClient = new OpenAI({
-  apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || '',
-});
-
-const buildDailyTipPrompt = (insights: FinancialInsights): string => {
-  const {
-    savingsRate,
-    categoryAnalysis,
-    currentMonthIncome,
-    currentMonthExpenses,
-    balanceProjection,
-  } = insights;
-
-  if (currentMonthIncome === 0 && currentMonthExpenses === 0) {
-    return 'El usuario no tiene transacciones registradas aún.';
-  }
-
-  const topCat =
-    categoryAnalysis.length > 0 ? categoryAnalysis[0] : null;
-  const lines: string[] = [
-    `Tasa de ahorro: ${savingsRate.toFixed(1)}%`,
-    `Ingresos del mes: $${currentMonthIncome.toFixed(2)}`,
-    `Gastos del mes: $${currentMonthExpenses.toFixed(2)}`,
-    topCat
-      ? `Categoría con mayor gasto: ${topCat.label} (${topCat.percentage.toFixed(0)}%)`
-      : '',
-    `Días estimados de saldo: ${balanceProjection.daysRemaining ?? 'N/A'}`,
-  ];
-
-  return lines.filter(Boolean).join('\n');
-};
-
 export const generateDailyTip = async (
+  uid: string,
   insights: FinancialInsights
 ): Promise<string> => {
   const hasData =
@@ -432,28 +380,9 @@ export const generateDailyTip = async (
     return 'Aún no tienes transacciones registradas. ¡Empieza registrando tus ingresos y gastos para recibir recomendaciones personalizadas!';
   }
 
-  const contextData = buildDailyTipPrompt(insights);
   try {
-    const response = await openaiClient.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'Eres un asesor financiero personal amigable. Genera un único consejo financiero breve (máximo 2 oraciones) y motivador basado en los datos del usuario. Responde únicamente el consejo, sin saludos ni introducciones. Responde en español.',
-        },
-        {
-          role: 'user',
-          content: `Datos financieros del usuario:\n${contextData}\n\nGenera un consejo financiero personalizado.`,
-        },
-      ],
-      max_tokens: 120,
-      temperature: 0.7,
-    });
-    return (
-      response.choices[0]?.message?.content?.trim() ??
-      'Revisa tus hábitos de gasto y establece una meta de ahorro mensual.'
-    );
+    const response = await runFinanceAiCapability(uid, 'recommend');
+    return response.content;
   } catch {
     // Fallback rule-based tip
     return buildFallbackTip(insights);
@@ -489,36 +418,10 @@ export const getDailyTip = async (
   uid: string,
   insights: FinancialInsights
 ): Promise<string> => {
-  const today = todayString();
-  const tipRef = doc(firebase, 'dailyTips', uid);
-
   try {
-    const { getDoc } = await import('firebase/firestore');
-    const snap = await getDoc(tipRef);
-
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data.date === today && data.tip) {
-        return data.tip as string;
-      }
-    }
-
-    // Generate new tip
-    const tip = await generateDailyTip(insights);
-    await setDoc(tipRef, { date: today, tip, generatedAt: new Date() });
-
-    // Save to history
-    await saveRecommendationToHistory(uid, {
-      type: 'daily_tip',
-      text: tip,
-      date: today,
-      read: false,
-      createdAt: new Date(),
-    });
-
-    return tip;
+    return await generateDailyTip(uid, insights);
   } catch {
-    return generateDailyTip(insights);
+    return buildFallbackTip(insights);
   }
 };
 
@@ -526,41 +429,20 @@ export const getDailyTip = async (
 // Firestore: Recommendation History
 // ─────────────────────────────────────────────
 
-export const saveRecommendationToHistory = async (
-  uid: string,
-  record: Omit<RecommendationRecord, 'id'>
-): Promise<void> => {
-  try {
-    const historyRef = collection(
-      firebase,
-      'recommendationHistory',
-      uid,
-      'items'
-    );
-    await addDoc(historyRef, record);
-  } catch (err) {
-    console.warn('Error saving recommendation history:', err);
-  }
-};
-
 export const getRecommendationHistory = async (
   uid: string,
   limitCount = 20
 ): Promise<RecommendationRecord[]> => {
   try {
-    const historyRef = collection(
-      firebase,
-      'recommendationHistory',
-      uid,
-      'items'
-    );
-    const q = query(
-      historyRef,
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as RecommendationRecord));
+    const records = await getApiRecommendationHistory(uid);
+    return records.slice(0, limitCount).map((record) => ({
+      id: record.id,
+      type: record.type || 'recommendation',
+      text: record.text || record.recommendation || 'Recomendación financiera',
+      date: record.date,
+      read: Boolean(record.read),
+      createdAt: record.createdAt,
+    }));
   } catch {
     return [];
   }
@@ -570,16 +452,5 @@ export const markRecommendationAsRead = async (
   uid: string,
   recommendationId: string
 ): Promise<void> => {
-  try {
-    const ref = doc(
-      firebase,
-      'recommendationHistory',
-      uid,
-      'items',
-      recommendationId
-    );
-    await updateDoc(ref, { read: true });
-  } catch (err) {
-    console.warn('Error marking recommendation as read:', err);
-  }
+  await markApiRecommendationRead(uid, recommendationId);
 };

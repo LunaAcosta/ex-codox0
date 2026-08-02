@@ -1,6 +1,28 @@
 
 # Project Title
 
+## Conexión con Finance AI API
+
+Copia `.env.example` a `.env.local` y configura `EXPO_PUBLIC_API_URL` con una
+URL accesible desde Expo. Inicia el backend desde `Finance_AI_API` con:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Expo Web y el simulador de iOS pueden usar `http://127.0.0.1:8000`. Android
+Emulator normalmente usa `http://10.0.2.2:8000`; un teléfono físico debe usar
+la IP local de la computadora.
+
+El cliente adjunta automáticamente el Firebase ID token en cada solicitud. La
+pestaña **Herramientas IA** consume estado, metadata, usuario autenticado y las
+operaciones `summary`, `analyze`, `recommend`, `predict` y `classify`. El chat
+financiero utiliza `POST /ai/chat`.
+
+El escáner de recibos envía la imagen como `multipart/form-data` a
+`POST /ai/ocr`. La imagen se procesa en memoria y la clave de OpenAI permanece
+exclusivamente en Finance AI API.
+
 A brief description of what this project does and who it's for
 
 # EX-CODOX

@@ -13,6 +13,9 @@ const BackButton = ({
     return (
         <TouchableOpacity 
         onPress={() => router.back()} 
+        accessibilityRole="button"
+        accessibilityLabel="Volver"
+        activeOpacity={0.8}
         style={[styles.button, style]}>
             <CaretLeft size={verticalScale(iconSize)}
                 color={colors.white}
@@ -25,10 +28,12 @@ export default BackButton
 
 const styles = StyleSheet.create({
     button: {
-        backgroundColor: colors.neutral600,
+        backgroundColor: colors.surfaceElevated,
         alignSelf: "flex-start",
         borderRadius: radius._12,
         borderCurve: "continuous",
-        padding: 5
+        padding: 7,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
 });

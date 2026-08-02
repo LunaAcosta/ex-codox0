@@ -9,37 +9,25 @@ import { colors, spacingX, spacingY } from '@/shared/constants/theme'
 import { scale, verticalScale } from '@/shared/utils/styling'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as Icons from "phosphor-react-native"
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Alert, ScrollView, StyleSheet, View } from 'react-native'
 import { useAuth } from '../../src/contexts/authContext'
 import { createOrUpdateWallet, deleteWallet } from '../../src/features/wallet/application/services/walletService'
 import { WalletType } from '../../src/shared/types'
 const WalletModal = () => {
-    const { user, updateUserData } = useAuth();
-    const [wallet, setWallet] = useState<WalletType>({
-        name: "",
-        image: null,
-    })
+    const { user } = useAuth();
+    const oldWallet = useLocalSearchParams<{ name: string; image?: string; id: string }>();
+    const [wallet, setWallet] = useState<WalletType>(() => ({
+        name: oldWallet.name || "",
+        image: oldWallet.image || null,
+    }))
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const oldWallet : {name : string, image: string, id: string} =
-        useLocalSearchParams()
-   // console.log("old wallet", oldWallet)
-
-    useEffect(()=>{
-        if(oldWallet?.id){
-            setWallet({
-                name:oldWallet?.name,
-                image:oldWallet?.image
-            });
-        }
-    }, []);
-    
     const onSubmit = async () => {
         let { name, image } = wallet;
-        if (!name.trim()|| !image) {
-            Alert.alert("Billetera", "Por favor, completa todos los campos");
+        if (!name.trim()) {
+            Alert.alert("Falta el nombre", "Escribe un nombre para identificar esta cartera.");
             return;
         }
         const data: WalletType = {
@@ -96,28 +84,32 @@ const WalletModal = () => {
         <ModalWrapper>
             <View style={styles.container}>
                 <Header
-                    title={oldWallet?.id? "Actualizar Billetera":"Nueva Billetera"}
+                    title={oldWallet?.id? "Editar cartera":"Nueva cartera"}
                     leftIcon={<BackButton />}
                     style={{ marginBottom: spacingY._10 }}
                 />
                 {/* Form */}
                 <ScrollView contentContainerStyle={styles.form}>
+                    <View style={styles.helperCard}>
+                        <Icons.Wallet color={colors.primary} size={verticalScale(22)} weight="duotone" />
+                        <View style={{ flex: 1 }}><Typo size={13} fontWeight="700">Organiza tu dinero</Typo><Typo size={11} color={colors.neutral400}>Crea una cartera para efectivo, banco o una meta de ahorro.</Typo></View>
+                    </View>
                     <View style={styles.inputContainer}>
                         <Typo color={colors.neutral200}>Nombre</Typo>
                         <Input
-                            placeholder="Salario..."
+                            placeholder="Ej. Cuenta principal"
                             value={wallet.name}
                             onChangeText={(value) => setWallet({ ...wallet, name: value })}
                         />
                     </View>
                     <View style={styles.inputContainer}>
-                        <Typo color={colors.neutral200}>Imagen</Typo>
+                        <View style={styles.labelRow}><Typo color={colors.neutral200}>Imagen</Typo><Typo size={11} color={colors.neutral500}>Opcional</Typo></View>
                         {/* Image input */}
                         <ImageUpload 
                             file={wallet.image } 
                             onClear={()=> setWallet({...wallet, image: null})}
                             onSelect={(file)=>setWallet({...wallet, image: file})}
-                            placeholder="Subir Imagen"/>
+                            placeholder="Personaliza tu cartera"/>
                     </View>
                 </ScrollView>
             </View>
@@ -138,9 +130,9 @@ const WalletModal = () => {
                     </Button>
                 )}
                 <Button onPress={onSubmit} loading={loading} style={{ flex: 1 }}>
-                    <Typo color={colors.white} fontWeight={"600"}>
+                    <Typo color={colors.neutral900} fontWeight={"800"}>
                         {
-                            oldWallet?.id? "ACTUALIZAR": "AGREGAR BILLETERA"
+                            oldWallet?.id? "Guardar cambios": "Crear cartera"
                         }
                     </Typo>
                 </Button>
@@ -171,9 +163,11 @@ const styles = StyleSheet.create({
         borderTopWidth: 1
     },
     form: {
-        gap: spacingY._30,
+        gap: spacingY._20,
         marginTop: spacingY._15
     },
+    helperCard: { flexDirection: 'row', alignItems: 'center', gap: spacingX._10, padding: spacingX._12, borderRadius: 14, backgroundColor: `${colors.primary}10`, borderWidth: 1, borderColor: `${colors.primary}28` },
+    labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     avatarContainer: {
         position: "relative",
         alignSelf: "center"

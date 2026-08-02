@@ -5,6 +5,7 @@ import { ResponseType, TransactionType, WalletType } from "../../../../shared/ty
 import { getLast12Months, getLast7Days, getYearRange } from "../../../../shared/utils/common";
 import { scale } from "../../../../shared/utils/styling";
 import { uploadFileToCloudinary } from "../../../ocr/application/services/imageService";
+import { invalidateFinancialData } from "../../../financeApi/application/financeApiService";
 import { createOrUpdateWallet } from "../../../wallet/application/services/walletService";
 
 
@@ -24,9 +25,9 @@ export const createUpdateTransaction = async (
             const oldTransactionSnapshot = await getDoc(doc(firebase, "transactions", id));
             const oldTransaction = oldTransactionSnapshot.data() as TransactionType;
             const shouldRevertOrignal =
-                oldTransaction.type != type ||
-                oldTransaction.amount != amount ||
-                oldTransaction.walletId != walletId;
+                oldTransaction.type !== type ||
+                oldTransaction.amount !== amount ||
+                oldTransaction.walletId !== walletId;
             if (shouldRevertOrignal) {
                 let res = await revertAndUpdateWallets(oldTransaction, Number(amount), type, walletId);
                 if (!res.success) return res;
@@ -60,6 +61,7 @@ export const createUpdateTransaction = async (
             : doc(collection(firebase, "transactions"))
 
         await setDoc(transactionRef, transactionData, { merge: true });
+        invalidateFinancialData(transactionData.uid);
         // todo: delete all transactions related to this wallet 
         return {
             success: true,
@@ -95,20 +97,20 @@ const updateWalletForNewTransaction = async (
             return { success: false, msg: "Wallet data not found." };
         }
 
-        if (type == "expense" && Number(walletData.amount || 0) - amount < 0) {
+        if (type === "expense" && Number(walletData.amount || 0) - amount < 0) {
             return {
                 success: false,
                 msg: "Selected wallet don't have enough balance"
             };
         }
 
-        const updateType = type == 'income' ? "totalIncome" : "totalExpenses"
+        const updateType = type === 'income' ? "totalIncome" : "totalExpenses"
         const updatedWalletAmount =
-            type == "income"
+            type === "income"
                 ? Number(walletData.amount || 0) + amount
                 : Number(walletData.amount || 0) - amount;
         const updatedTotals =
-            type == "income"
+            type === "income"
                 ? Number(walletData.totalIncome || 0) + amount
                 : Number(walletData.totalExpenses || 0) + amount;
 
@@ -156,10 +158,10 @@ const revertAndUpdateWallets = async (
 
         let newWallet = newWalletSnapshot.data() as WalletType;
 
-        const revertType = oldTransaction.type == "income" ? "totalIncome" : "totalExpenses";
+        const revertType = oldTransaction.type === "income" ? "totalIncome" : "totalExpenses";
 
         const revertIncomeExpense: number =
-            oldTransaction.type == "income"
+            oldTransaction.type === "income"
                 ? -Number(oldTransaction.amount)
                 : Number(oldTransaction.amount);
 
@@ -168,12 +170,12 @@ const revertAndUpdateWallets = async (
         const revertedIncomeExpenseAmount =
             Number(orignalWallet[revertType] || 0) - Number(oldTransaction.amount || 0)
 
-        if (newTrasactionType == 'expense') {
+        if (newTrasactionType === 'expense') {
 
             // if user tries to convert income to expense on the same wallet 
             // or if the user tries to increase the expense amount and don´t have enough balance 
             if (
-                oldTransaction.walletId == newWalletId &&
+                oldTransaction.walletId === newWalletId &&
                 revertedWalletAmount < newTrasactionAmount
             ) {
                 return {
@@ -209,10 +211,10 @@ const revertAndUpdateWallets = async (
         newWallet = newWalletSnapshot.data() as WalletType;
 
         const updateType =
-            newTrasactionType == 'income' ? "totalIncome" : "totalExpenses";
+            newTrasactionType === 'income' ? "totalIncome" : "totalExpenses";
 
         const updatedTransactionAmount: number =
-            newTrasactionType == "income"
+            newTrasactionType === "income"
                 ? Number(newTrasactionAmount)
                 : -Number(newTrasactionAmount)
 
@@ -256,14 +258,14 @@ export const deleteTransaction = async (
         );
         const walletData = walletSnapshot.data() as WalletType;
 
-        const updateType = transactionType == 'income' ? "totalIncome" : "totalExpenses";
+        const updateType = transactionType === 'income' ? "totalIncome" : "totalExpenses";
         const newWalletAmount =
             walletData?.amount! -
-            (transactionType == "income" ? transactionAmount : -transactionAmount);
+            (transactionType === "income" ? transactionAmount : -transactionAmount);
 
         const newIncomeExpenseAmount = walletData[updateType]! - transactionAmount;
 
-        if (transactionType == 'expense' && newWalletAmount < 0) {
+        if (transactionType === 'expense' && newWalletAmount < 0) {
             return { success: false, msg: "You cannot delete this transaction" }
         }
 
@@ -274,6 +276,7 @@ export const deleteTransaction = async (
         });
 
         await deleteDoc(transactionRef);
+        invalidateFinancialData(transactionData.uid);
 
         return { success: true };
     } catch (err: any) {
@@ -316,13 +319,17 @@ export const fetWeeklyStats = async (
             //     .toISOString()
             //     .split("T")[0];
 
-            const transactionDate = new Date(
-                transaction.date.toDate()
-            ).toLocaleDateString('en-CA');
+            const rawTransactionDate = transaction.date;
+            const normalizedTransactionDate = rawTransactionDate instanceof Timestamp
+                ? rawTransactionDate.toDate()
+                : rawTransactionDate instanceof Date
+                    ? rawTransactionDate
+                    : new Date(rawTransactionDate);
+            const transactionDate = normalizedTransactionDate.toLocaleDateString('en-CA');
 
             
 
-            const dayData = weeklyData.find((day) => day.date == transactionDate);
+            const dayData = weeklyData.find((day) => day.date === transactionDate);
 
             if (dayData) {
                 if (transaction.type === "income") {

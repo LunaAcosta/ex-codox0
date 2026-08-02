@@ -1,5 +1,5 @@
 import { colors } from '@/shared/constants/theme'
-import { ActivityIndicator, ActivityIndicatorProps, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, ActivityIndicatorProps, View } from 'react-native'
 
 const Loading = ({
     size = "large",
@@ -14,5 +14,3 @@ const Loading = ({
 }
 
 export default Loading
-
-const styles = StyleSheet.create({})

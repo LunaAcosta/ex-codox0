@@ -1,6 +1,5 @@
 import { collection, onSnapshot, query, QueryConstraint } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import { StyleSheet } from 'react-native'
 import { firebase } from '../../core/config/firebase'
 
 const useFetchData = <T>(
@@ -29,8 +28,7 @@ const useFetchData = <T>(
             setLoading(false);
 
         },(err)=>{
-            console.log('Error fetching data', err);
-            setError(err.message);
+            setError('No fue posible cargar la información. Intenta de nuevo.');
             setLoading(false)
         });
 
@@ -44,5 +42,3 @@ const useFetchData = <T>(
 }
 
 export default useFetchData
-
-const styles = StyleSheet.create({})

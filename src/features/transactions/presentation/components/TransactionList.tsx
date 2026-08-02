@@ -6,6 +6,7 @@ import { Timestamp } from 'firebase/firestore'
 import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import Loading from '../../../../shared/components/Loading'
+import EmptyState from '../../../../shared/components/EmptyState'
 import Typo from '../../../../shared/components/Typo'
 import { TransactionItemProps, TransactionListType, TransactionType } from '../../../../shared/types'
 import { verticalScale } from '../../../../shared/utils/styling'
@@ -57,14 +58,11 @@ const TransactionList = ({
 
       </View>
 
-      {!loading && data.length == 0 && (
-        <Typo
-          size={15}
-          color={colors.neutral400}
-          style={{textAlign: "center", marginTop: spacingY._15}}
-          >
-            {emptyListMessage}
-        </Typo>
+      {!loading && data.length === 0 && (
+        <EmptyState
+          title={emptyListMessage || 'Sin movimientos todavía'}
+          description="Agrega una transacción para comenzar a ver tu actividad financiera."
+        />
       )}
       {loading && (
         <View style={{ top: verticalScale(100)}}>
@@ -81,10 +79,16 @@ const TransactionItem = ({
   item, index, handleClick
 }: TransactionItemProps)=>{
   // console.log('item.description: ', item?.description)
-  let category = item?.type == 'income'? incomeCategory : expenseCategories[item.category!]
+  let category = item?.type === 'income'? incomeCategory : expenseCategories[item.category!]
   const IconComponent = category.icon;
 
-  const date = (item?.date as Timestamp)?.toDate()?.toLocaleDateString("en-GB", {
+  const rawDate = item?.date;
+  const normalizedDate = rawDate instanceof Timestamp
+    ? rawDate.toDate()
+    : rawDate instanceof Date
+      ? rawDate
+      : new Date(rawDate);
+  const date = Number.isNaN(normalizedDate.getTime()) ? 'Sin fecha' : normalizedDate.toLocaleDateString("es-GT", {
     day : "numeric",
     month: "short"
   })
@@ -107,14 +111,14 @@ const TransactionItem = ({
           }
         </View>
         <View style={styles.categoryDes}>
-          <Typo size={17}>{category.label}</Typo>
+          <Typo size={15} fontWeight="700">{category.label}</Typo>
           <Typo size={12} color={colors.neutral400} textProps={{numberOfLines: 1}}>
             {item?.description}
           </Typo>
         </View>
         <View style={styles.amountDate}>
-          <Typo color={item?.type == "income" ? colors.primary : colors.rose}>
-            {`${item?.type == "income" ? "+ $": "- $"}${item?.amount}`}
+          <Typo size={14} fontWeight="800" color={item?.type === "income" ? colors.green : colors.rose}>
+            {`${item?.type === "income" ? "+ $": "- $"}${Number(item?.amount || 0).toFixed(2)}`}
           </Typo>
           <Typo size={13} color={colors.neutral400}>
             {date}
@@ -146,9 +150,10 @@ const styles = StyleSheet.create({
 
     // list with backgroud
     backgroundColor: colors.neutral800,
-    padding: spacingY._10,
-    paddingHorizontal: spacingY._10,
-    borderRadius: radius._12, 
+    padding: spacingY._12,
+    borderRadius: radius._15,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   icon: {
     height: verticalScale(44),

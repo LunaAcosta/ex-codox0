@@ -1,227 +1,93 @@
-import Header from '@/shared/components/Header'
-import ScreenWrapper from '@/shared/components/ScreenWrapper'
-import Typo from '@/shared/components/Typo'
-import { colors, radius, spacingX, spacingY } from '@/shared/constants/theme'
-import { verticalScale } from '@/shared/utils/styling'
-import { signOut } from '@firebase/auth'
-import { Image } from 'expo-image'
-import { useRouter } from 'expo-router'
-import * as Icons from "phosphor-react-native"
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
-import { useAuth } from '../../src/contexts/authContext'
-import { auth } from '../../src/core/config/firebase'
-import { getProfileImage } from '../../src/features/ocr/application/services/imageService'
-import { accountOptionType } from '../../src/shared/types'
+import ScreenWrapper from '@/shared/components/ScreenWrapper';
+import SurfaceCard from '@/shared/components/SurfaceCard';
+import Typo from '@/shared/components/Typo';
+import { colors, radius, spacingX, spacingY } from '@/shared/constants/theme';
+import { verticalScale } from '@/shared/utils/styling';
+import { signOut } from '@firebase/auth';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import * as Icons from 'phosphor-react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+import { useAuth } from '../../src/contexts/authContext';
+import { auth } from '../../src/core/config/firebase';
+import { getProfileImage } from '../../src/features/ocr/application/services/imageService';
+
+type ProfileAction = {
+  title: string;
+  description: string;
+  color: string;
+  Icon: typeof Icons.User;
+  onPress: () => void;
+  destructive?: boolean;
+};
 
 const Profile = () => {
-  const { user } = useAuth()
-  const router = useRouter()
+  const { user } = useAuth();
+  const router = useRouter();
 
-  const accountOptions: accountOptionType[] = [
-    {
-      title: "Editar Perfil",
-      icon: (
-        <Icons.User
-          size={26}
-          color={colors.white}
-          weight='fill'
-        />
-      ),
-      routeName: '/(modals)/profileModal',
-      bgColor: "#6366f1"
-    },
-    {
-      title: "Configuración",
-      icon: (
-        <Icons.GearSix
-          size={26}
-          color={colors.white}
-          weight='fill'
-        />
-      ),
-      // routeName: '/(modals)/profileModal',
-      bgColor: "#059569"
-    },
-    {
-      title: "Política de Privacidad",
-      icon: (
-        <Icons.Lock
-          size={26}
-          color={colors.white}
-          weight='fill'
-        />
-      ),
-      //routeName: '/(modals)/profileModal',
-      bgColor: colors.neutral600
-    },
-    {
-      title: "Cerrar Sesión",
-      icon: (
-        <Icons.Power
-          size={26}
-          color={colors.white}
-          weight='fill'
-        />
-      ),
-      //routeName: '/(modals)/profileModal',
-      bgColor: "#e11d48"
-    },
-  ];
-
-  const handleLogout = async () => {
-    await signOut(auth);
+  const confirmLogout = () => {
+    Alert.alert('Cerrar sesión', 'Tendrás que ingresar nuevamente para acceder a tus finanzas.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: () => signOut(auth) },
+    ]);
   };
 
-
-  const showLogoutAlert = () => {
-    Alert.alert("Confirmar", "¿Estás seguro de que quieres cerrar sesión?", [
-      {
-        text: "Cencelar",
-        onPress: () => console.log('Cencelar cierre de sesión'),
-        style: 'cancel'
-      },
-      {
-        text: "Cerrar Sesión",
-        onPress: () => handleLogout(),
-        style: 'destructive'
-      }
-    ])
-  }
-
-  const handlePress = (item: accountOptionType) => {
-    if (item.title == 'Cerrar Sesión') {
-      showLogoutAlert();
-    }
-
-    if (item.routeName) router.push(item.routeName);
-  }
-
+  const actions: ProfileAction[] = [
+    { title: 'Editar perfil', description: 'Actualiza tu nombre y fotografía', color: colors.violet, Icon: Icons.User, onPress: () => router.push('/(modals)/profileModal') },
+    { title: 'Preferencias', description: 'Moneda, notificaciones y apariencia', color: colors.blue, Icon: Icons.SlidersHorizontal, onPress: () => Alert.alert('Próximamente', 'Estamos preparando preferencias personalizadas.') },
+    { title: 'Privacidad y seguridad', description: 'Cómo protegemos tu información', color: colors.green, Icon: Icons.ShieldCheck, onPress: () => Alert.alert('Privacidad', 'Tus análisis de IA se limitan al usuario autenticado. Nunca compartimos datos entre cuentas.') },
+    { title: 'Cerrar sesión', description: 'Salir de forma segura de este dispositivo', color: colors.rose, Icon: Icons.SignOut, onPress: confirmLogout, destructive: true },
+  ];
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
-        <Header title='Perfil' style={{ marginVertical: spacingY._10 }} />
-        {/* user info */}
-        <View style={styles.userInfo}>
-          {/* avatar */}
-          <View>
-            {/* user image */}
-            <Image
-              source={getProfileImage(user?.image)}
-              style={styles.avatar}
-              contentFit='cover'
-              transition={100} />
-          </View>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.pageHeader}><View><Typo size={12} color={colors.neutral400}>TU CUENTA</Typo><Typo size={24} fontWeight="900">Perfil</Typo></View></View>
 
-          {/* name && email */}
-          <View style={styles.nameContainer}>
-            <Typo size={24} fontWeight={"600"} color={colors.neutral100}>
-              {user?.name}
-            </Typo>
-            <Typo size={15} color={colors.neutral400}>
-              {user?.email}
-            </Typo>
+        <SurfaceCard style={styles.userCard}>
+          <View style={styles.avatarWrapper}>
+            <Image source={getProfileImage(user?.image)} style={styles.avatar} contentFit="cover" transition={100} />
+            <View style={styles.verifiedBadge}><Icons.Check size={12} color={colors.neutral900} weight="bold" /></View>
           </View>
+          <View style={styles.userDetails}>
+            <Typo size={21} fontWeight="900">{user?.name || 'Usuario Ex-Codox'}</Typo>
+            <Typo size={13} color={colors.neutral400}>{user?.email}</Typo>
+          </View>
+        </SurfaceCard>
 
-        </View>
-        {/* account options */}
-        <View style={styles.accountOptions}>
-          {accountOptions.map((item, index) => {
-            return (
-              <Animated.View
-                key={index.toString()}
-                entering={FadeInDown.delay(index * 50)
-                  .springify()
-                  .damping(14)}
-                style={styles.listItem}>
-                <TouchableOpacity style={styles.flexRow} onPress={() => handlePress(item)}>
-                  {/* icon */}
-                  <View style={[
-                    styles.listIcon,
-                    {
-                      backgroundColor: item?.bgColor
-                    }
-                  ]}
-                  >
-                    {item.icon && item.icon}
-                  </View>
-                  <Typo size={16} style={{ flex: 1 }} fontWeight={"500"}>{item.title}</Typo>
-                  <Icons.CaretRight
-                    size={verticalScale(20)}
-                    weight='bold'
-                    color={colors.white}
-                  />
-                </TouchableOpacity>
-              </Animated.View>
-            )
-          })}
-        </View>
-      </View>
+        <View style={styles.sectionHeader}><Typo size={17} fontWeight="800">Cuenta y seguridad</Typo><Typo size={11} color={colors.neutral400}>Administra tu experiencia</Typo></View>
+        <SurfaceCard style={styles.actionsCard}>
+          {actions.map(({ title, description, color, Icon, onPress, destructive }, index) => (
+            <TouchableOpacity key={title} activeOpacity={0.75} onPress={onPress} style={[styles.action, index < actions.length - 1 && styles.actionBorder]}>
+              <View style={[styles.actionIcon, { backgroundColor: `${color}18` }]}><Icon size={21} color={color} weight="duotone" /></View>
+              <View style={styles.actionContent}><Typo size={14} fontWeight="700" color={destructive ? colors.rose : colors.text}>{title}</Typo><Typo size={11} color={colors.neutral400}>{description}</Typo></View>
+              <Icons.CaretRight size={17} color={colors.neutral500} weight="bold" />
+            </TouchableOpacity>
+          ))}
+        </SurfaceCard>
+
+        <Typo size={10} color={colors.neutral500} style={styles.version}>Ex-Codox · Tu espacio financiero</Typo>
+      </ScrollView>
     </ScreenWrapper>
-  )
-}
+  );
+};
 
-export default Profile
+export default Profile;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: spacingX._20,
-  },
-  userInfo: {
-    marginTop: verticalScale(30),
-    alignItems: "center",
-    gap: spacingY._15
-  },
-  avatarContainer: {
-    position: "relative",
-    alignSelf: "center"
-  },
-  avatar: {
-    alignSelf: "center",
-    backgroundColor: colors.neutral300,
-    height: verticalScale(135),
-    width: verticalScale(135),
-    borderRadius: 200,
-    //overflow: "hidden",
-    //position: "relative"
-  },
-  editIcon: {
-    position: "absolute",
-    bottom: 5,
-    right: 8,
-    borderRadius: 50,
-    backgroundColor: colors.neutral100,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
-    padding: 5
-  },
-  nameContainer: {
-    gap: verticalScale(4),
-    alignItems: "center",
-  },
-  listIcon: {
-    height: verticalScale(44),
-    width: verticalScale(44),
-    backgroundColor: colors.neutral500,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius._15,
-    borderCurve: "continuous"
-  },
-  listItem: {
-    marginBottom: verticalScale(17),
-  },
-  accountOptions: {
-    marginTop: spacingY._35
-  },
-  flexRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacingX._10
-  }
-})
+  container: { paddingHorizontal: spacingX._20, paddingBottom: verticalScale(100) },
+  pageHeader: { marginVertical: spacingY._10 },
+  userCard: { flexDirection: 'row', alignItems: 'center', gap: spacingX._15, padding: spacingX._20, marginTop: spacingY._12 },
+  avatarWrapper: { position: 'relative' },
+  avatar: { width: verticalScale(76), height: verticalScale(76), borderRadius: radius._24, backgroundColor: colors.neutral700 },
+  verifiedBadge: { position: 'absolute', right: -4, bottom: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: colors.surface },
+  userDetails: { flex: 1, gap: spacingY._5 },
+  sectionHeader: { marginTop: spacingY._25, marginBottom: spacingY._10 },
+  actionsCard: { padding: 0, overflow: 'hidden' },
+  action: { flexDirection: 'row', alignItems: 'center', gap: spacingX._12, padding: spacingX._15 },
+  actionBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  actionIcon: { width: 42, height: 42, borderRadius: radius._12, alignItems: 'center', justifyContent: 'center' },
+  actionContent: { flex: 1, gap: 3 },
+  version: { textAlign: 'center', marginTop: spacingY._25 },
+});

@@ -35,16 +35,13 @@ const WalletListItem = ({
         >
             <TouchableOpacity style={styles.container} onPress={openWallet}>
                 <View style={styles.imageContainer}>
-                    <Image
-                        style={{flex: 1}}
-                        source={item?.image}
-                        transition={100}
-                    />
+                    {item?.image ? <Image style={{flex: 1}} source={item.image} transition={100} /> : <View style={styles.fallbackIcon}><Icons.Wallet size={21} color={colors.primary} weight="duotone" /></View>}
                 </View>
                 <View style={styles.nameContainer}>
-                    <Typo size={16}> {item?.name}</Typo>
-                    <Typo size={12} color={colors.neutral400}> $ {formattedAmount}</Typo>
+                    <Typo size={15} fontWeight="700">{item?.name}</Typo>
+                    <Typo size={12} color={colors.neutral400}>Saldo disponible</Typo>
                 </View>
+                <Typo size={14} color={colors.primary} fontWeight="800">${formattedAmount}</Typo>
                 <Icons.CaretRight
                     size={verticalScale(20)}
                     weight="bold"
@@ -62,17 +59,23 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: "row", 
         alignItems: "center",
-        marginBottom: verticalScale(17), // padding: spacingX._15,
+        marginBottom: verticalScale(10),
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: radius._15,
+        padding: spacingX._12,
     },
     imageContainer: {
         height: verticalScale(45),
         width: verticalScale(45),
         borderWidth: 1,
-        borderColor: colors.neutral600,
+        borderColor: colors.border,
         borderRadius: radius._12,
         borderCurve: "continuous",
         overflow: "hidden",
     },
+    fallbackIcon: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.primary}12` },
     nameContainer: {
         flex: 1,
         gap: 2,

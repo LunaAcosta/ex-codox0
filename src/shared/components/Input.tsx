@@ -1,23 +1,30 @@
 import { colors, radius, spacingX } from '@/shared/constants/theme'
+import { useState } from 'react'
 import { StyleSheet, TextInput, View } from 'react-native'
 import { InputProps } from '../types'
 import { verticalScale } from '../utils/styling'
 
 const Input = (props: InputProps) => {
+  const [focused, setFocused] = useState(false)
+  const { containerStyle, inputStyle, icon, inputRef, onFocus, onBlur, ...inputProps } = props
   return (
     <View
-    style= {[styles.container, props.containerStyle && props.containerStyle]}
+    style={[styles.container, focused && styles.focused, containerStyle]}
     >
-        {
-            props.icon && props.icon
-        }
-      <TextInput style={[styles.input, props.inputStyle]}
+      {icon}
+      <TextInput style={[styles.input, inputStyle]}
       placeholderTextColor={colors.neutral400}
-      ref={props.inputRef && props.inputRef}
-      {...props}
-      >
-
-      </TextInput>
+      ref={inputRef}
+      {...inputProps}
+      onFocus={(event) => {
+        setFocused(true)
+        onFocus?.(event)
+      }}
+      onBlur={(event) => {
+        setFocused(false)
+        onBlur?.(event)
+      }}
+      />
     </View>
   )
 }
@@ -31,11 +38,16 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         borderWidth:1,
-        borderColor: colors.neutral300,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
         borderCurve: "continuous",
         borderRadius: radius._17,
         paddingHorizontal: spacingX._15,
         gap: spacingX._10
+    },
+    focused: {
+        borderColor: colors.primary,
+        backgroundColor: colors.surfaceElevated,
     },
     input: {
         flex:1,

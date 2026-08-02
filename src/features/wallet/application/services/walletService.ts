@@ -2,6 +2,7 @@ import { collection, deleteDoc, doc, getDocs, query, setDoc, where, writeBatch }
 import { firebase } from "../../../../../src/core/config/firebase";
 import { ResponseType, WalletType } from "../../../../shared/types";
 import { uploadFileToCloudinary } from "../../../ocr/application/services/imageService";
+import { invalidateFinancialData } from "../../../financeApi/application/financeApiService";
 
 export const createOrUpdateWallet = async (
     walletData: Partial<WalletType>
@@ -29,6 +30,7 @@ export const createOrUpdateWallet = async (
         : doc(collection(firebase, "wallets"));
         
         await setDoc(walletRef, walletToSave, {merge: true}); // update only the data provided
+        invalidateFinancialData(walletData.uid);
         return {success: true, data: {...walletToSave, id: walletRef.id}};
 
     } catch (error: any) {
@@ -41,7 +43,8 @@ export const deleteWallet = async (walletId: string):  Promise<ResponseType> =>{
     try{
 
         const walletRef = doc(firebase, "wallets", walletId);
-        await deleteDoc(walletRef)
+       await deleteDoc(walletRef)
+       invalidateFinancialData();
 
         deleteTransactionByWalletId(walletId);
         return { success: true, msg: "Wallet deleted succesfully"};
@@ -61,7 +64,7 @@ export const deleteTransactionByWalletId = async (walletId: string):  Promise<Re
                 where('walletId', '==', walletId)
             );
             const transactionsSnapshot = await getDocs(transactionsQuery)
-            if(transactionsSnapshot.size == 0){
+            if(transactionsSnapshot.size === 0){
                 hasMoreTransaction = false
                 break;
             }

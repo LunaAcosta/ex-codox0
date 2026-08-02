@@ -1,14 +1,12 @@
 import FinancialAssistantModal from '@/features/codoxia/presentation/components/FinancialAssistantModal'
+import { useFinancialData } from '@/features/financeApi/presentation/hooks/useFinancialData'
 import Button from '@/shared/components/Button'
-import Header from '@/shared/components/Header'
 import ScreenWrapper from '@/shared/components/ScreenWrapper'
 import Typo from '@/shared/components/Typo'
 import { colors, radius, spacingX, spacingY } from '@/shared/constants/theme'
-import useFetchData from '@/shared/hooks/useFetchData'
 import { scale, verticalScale } from '@/shared/utils/styling'
-import { where } from 'firebase/firestore'
 import * as Icons from 'phosphor-react-native'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
     ActivityIndicator,
     Animated,
@@ -22,13 +20,11 @@ import {
 import { useAuth } from '../../src/contexts/authContext'
 import {
     analyzeFinancials,
-    FinancialInsights,
     getDailyTip,
     getRecommendationHistory,
     markRecommendationAsRead,
     RecommendationRecord,
 } from '../../src/features/recommendations/application/services/recommendationService'
-import { TransactionType, WalletType } from '../../src/shared/types'
 
 // ─────────────────────────────────────────────
 // Sub-components
@@ -120,51 +116,54 @@ const RiskIndicator = ({ level }: { level: 'green' | 'yellow' | 'red' }) => {
 const CodoxIA = () => {
   const [showAssistant, setShowAssistant] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [insights, setInsights] = useState<FinancialInsights | null>(null)
   const [dailyTip, setDailyTip] = useState<string>('')
   const [history, setHistory] = useState<RecommendationRecord[]>([])
-  const [loadingInsights, setLoadingInsights] = useState(false)
-  const [loadingTip, setLoadingTip] = useState(false)
+  const [loadingTip, setLoadingTip] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [expandedRecs, setExpandedRecs] = useState(false)
-  const fadeAnim = useRef(new Animated.Value(0)).current
+  const [fadeAnim] = useState(() => new Animated.Value(0))
 
   const { user } = useAuth()
   const uid = user?.uid ?? ''
 
-  const transactionConstraints = useMemo(() => [where('uid', '==', uid)], [uid])
-  const walletConstraints = useMemo(() => [where('uid', '==', uid)], [uid])
+  const { transactions: apiTransactions, wallets: apiWallets, loading: financialDataLoading, refresh: refreshFinancialData } = useFinancialData(uid)
+  const transactions = useMemo(() => apiTransactions.map((transaction) => ({ ...transaction, image: transaction.image as any })), [apiTransactions])
+  const wallets = useMemo(() => apiWallets.map((wallet) => ({ ...wallet, image: wallet.image || null, created: wallet.created ? new Date(wallet.created) : undefined })), [apiWallets])
+  const dataReady = !financialDataLoading
+  const insights = useMemo(
+    () => dataReady && uid ? analyzeFinancials(transactions, wallets) : null,
+    [dataReady, transactions, uid, wallets],
+  )
+  const displayAlerts = useMemo(() => {
+    if (!insights) return []
+    if (insights.alerts.length) return insights.alerts
+    if (!transactions.length) return [{ id: 'start', severity: 'low' as const, message: 'Registra ingresos y gastos para que Codox pueda vigilar cambios importantes.' }]
+    if (insights.currentMonthIncome === 0 && insights.currentMonthExpenses > 0) return [{ id: 'income_missing', severity: 'medium' as const, message: `Tienes $${insights.currentMonthExpenses.toFixed(2)} en gastos este mes y aún no hay ingresos registrados.` }]
+    if (insights.savingsRate >= 20) return [{ id: 'healthy_saving', severity: 'low' as const, message: `Este mes conservas el ${insights.savingsRate.toFixed(0)}% de tus ingresos. Tu ritmo de ahorro es saludable.` }]
+    const topCategory = insights.categoryAnalysis[0]
+    if (topCategory) return [{ id: 'top_category', severity: 'low' as const, message: `${topCategory.label} es tu principal categoría de gasto con $${topCategory.amount.toFixed(2)} este mes.` }]
+    return [{ id: 'stable', severity: 'low' as const, message: `Tu saldo disponible es de $${insights.totalBalance.toFixed(2)} y no se detectan cambios de riesgo.` }]
+  }, [insights, transactions.length])
 
-  const { data: transactions, loading: transactionsLoading } =
-    useFetchData<TransactionType>('transactions', transactionConstraints)
+  useEffect(() => {
+    if (!insights || !uid) return
 
-  const { data: wallets, loading: walletsLoading } =
-    useFetchData<WalletType>('wallets', walletConstraints)
+    let active = true
+    void getDailyTip(uid, insights).then((tip) => {
+      if (!active) return
+      setDailyTip(tip)
+      setLoadingTip(false)
+    })
 
-  const dataReady = !transactionsLoading && !walletsLoading
-
-  const computeInsights = useCallback(async () => {
-    if (!dataReady || !uid) return
-    setLoadingInsights(true)
-    const result = analyzeFinancials(transactions, wallets)
-    setInsights(result)
-    setLoadingInsights(false)
-
-    setLoadingTip(true)
-    const tip = await getDailyTip(uid, result)
-    setDailyTip(tip)
-    setLoadingTip(false)
-
+    fadeAnim.setValue(0)
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
     }).start()
-  }, [dataReady, uid, transactions, wallets])
 
-  useEffect(() => {
-    computeInsights()
-  }, [computeInsights])
+    return () => { active = false }
+  }, [fadeAnim, insights, uid])
 
   const loadHistory = useCallback(async () => {
     if (!uid) return
@@ -172,16 +171,23 @@ const CodoxIA = () => {
     setHistory(h)
   }, [uid])
 
-  useEffect(() => {
-    if (showHistory) loadHistory()
-  }, [showHistory, loadHistory])
+  const toggleHistory = useCallback(async () => {
+    const willShow = !showHistory
+    setShowHistory(willShow)
+    if (willShow) await loadHistory()
+  }, [loadHistory, showHistory])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    await computeInsights()
+    await refreshFinancialData()
+    if (insights && uid) {
+      setLoadingTip(true)
+      setDailyTip(await getDailyTip(uid, insights))
+      setLoadingTip(false)
+    }
     if (showHistory) await loadHistory()
     setRefreshing(false)
-  }, [computeInsights, loadHistory, showHistory])
+  }, [insights, loadHistory, refreshFinancialData, showHistory, uid])
 
   const handleMarkRead = async (id: string) => {
     if (!uid) return
@@ -202,12 +208,15 @@ const CodoxIA = () => {
   const formatCurrency = (n: number) =>
     `$${Math.abs(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-  const isLoading = transactionsLoading || walletsLoading || loadingInsights
+  const isLoading = financialDataLoading
 
   return (
     <ScreenWrapper>
       <View style={styles.wrapper}>
-        <Header title="Codox IA" style={{ marginBottom: spacingY._10 }} />
+        <View style={styles.pageHeader}>
+          <View><Typo size={12} color={colors.neutral400}>TU CENTRO DE BIENESTAR</Typo><Typo size={24} fontWeight="900">Codox inteligente</Typo></View>
+          <View style={styles.headerIcon}><Icons.Sparkle size={21} color={colors.primary} weight="fill" /></View>
+        </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -220,6 +229,11 @@ const CodoxIA = () => {
             />
           }
         >
+          <TouchableOpacity activeOpacity={0.82} style={styles.assistantBanner} onPress={() => setShowAssistant(true)}>
+            <View style={styles.assistantBannerIcon}><Icons.ChatCircleDots size={25} color={colors.primary} weight="duotone" /></View>
+            <View style={{ flex: 1 }}><Typo size={15} fontWeight="800">Pregunta a tu asistente</Typo><Typo size={11} color={colors.neutral400}>Respuestas breves basadas en tus datos</Typo></View>
+            <Icons.ArrowRight size={19} color={colors.primary} weight="bold" />
+          </TouchableOpacity>
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -352,13 +366,13 @@ const CodoxIA = () => {
               )}
 
               {/* ── 3. Alerts ── */}
-              {insights && insights.alerts.length > 0 && (
+              {insights && (
                 <SectionCard>
                   <SectionTitle
-                    icon={<Icons.WarningCircle color={colors.rose} weight="fill" size={scale(18)} />}
+                    icon={<Icons.WarningCircle color={displayAlerts.some((alert) => alert.severity === 'high') ? colors.rose : colors.primary} weight="fill" size={scale(18)} />}
                     title="Alertas inteligentes"
                   />
-                  {insights.alerts.map((alert) => (
+                  {displayAlerts.map((alert) => (
                     <View key={alert.id} style={styles.alertRow}>
                       <AlertBadge severity={alert.severity} />
                       <Typo size={12} color={colors.textLight} style={{ flex: 1, lineHeight: 18 }}>
@@ -366,21 +380,6 @@ const CodoxIA = () => {
                       </Typo>
                     </View>
                   ))}
-                </SectionCard>
-              )}
-
-              {insights && insights.alerts.length === 0 && (
-                <SectionCard>
-                  <SectionTitle
-                    icon={<Icons.WarningCircle color={colors.green} weight="fill" size={scale(18)} />}
-                    title="Alertas inteligentes"
-                  />
-                  <View style={styles.emptyState}>
-                    <Icons.CheckCircle color={colors.green} weight="fill" size={scale(24)} />
-                    <Typo size={12} color={colors.neutral400} style={{ marginTop: spacingY._5 }}>
-                      Sin alertas activas. ¡Buen trabajo!
-                    </Typo>
-                  </View>
                 </SectionCard>
               )}
 
@@ -532,7 +531,7 @@ const CodoxIA = () => {
               {transactions.length > 0 && (
                 <SectionCard>
                   <Pressable
-                    onPress={() => setShowHistory((v) => !v)}
+                    onPress={toggleHistory}
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <SectionTitle
@@ -622,15 +621,14 @@ const CodoxIA = () => {
 
         {/* FAB – Chat assistant */}
         <Button style={styles.floatingButton} onPress={() => setShowAssistant(true)}>
-          <Icons.ChatCircleDots color={colors.white} weight="fill" size={verticalScale(24)} />
+          <Icons.ChatCircleDots color={colors.neutral900} weight="fill" size={verticalScale(20)} />
+          <Typo size={12} color={colors.neutral900} fontWeight="800">Preguntar</Typo>
         </Button>
       </View>
 
       <FinancialAssistantModal
         isVisible={showAssistant}
         onClose={() => setShowAssistant(false)}
-        transactions={transactions}
-        wallets={wallets}
       />
     </ScreenWrapper>
   )
@@ -644,6 +642,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacingX._20,
     marginTop: verticalScale(8),
   },
+  pageHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacingY._10 },
+  headerIcon: { width: 44, height: 44, borderRadius: radius._15, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.primary}18` },
+  assistantBanner: { flexDirection: 'row', alignItems: 'center', gap: spacingX._10, padding: spacingX._12, borderRadius: radius._17, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: spacingY._15 },
+  assistantBannerIcon: { width: 44, height: 44, borderRadius: radius._15, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.primary}18` },
   scroll: {
     paddingTop: spacingY._5,
   },
@@ -752,10 +754,12 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     height: verticalScale(50),
-    width: verticalScale(50),
-    borderRadius: 100,
+    minWidth: verticalScale(112),
+    borderRadius: radius._20,
     position: 'absolute',
     bottom: verticalScale(30),
-    right: verticalScale(30),
+    right: verticalScale(20),
+    flexDirection: 'row',
+    gap: spacingX._7,
   },
 })

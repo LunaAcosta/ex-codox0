@@ -1,99 +1,96 @@
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { auth, firebase } from "../core/config/firebase";
 import { AuthContextType, UserType } from "../shared/types";
 
 
-const AuthContext = createContext<AuthContextType | null>(null)
+const AuthContext = createContext<AuthContextType | null>(null);
+
+const getAuthErrorMessage = (error: unknown) => {
+    const message = error instanceof Error ? error.message : "Ocurrió un error inesperado";
+
+    if (message.includes("auth/invalid-credential")) return "Correo o contraseña inválidos";
+    if (message.includes("auth/invalid-email")) return "Correo electrónico inválido";
+    if (message.includes("auth/email-already-in-use")) return "El correo electrónico ya está en uso";
+    if (message.includes("auth/weak-password")) return "La contraseña debe tener al menos 6 caracteres";
+
+    return "No fue posible completar la solicitud. Intenta de nuevo";
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserType>(null);
     const router = useRouter();
 
-    useEffect(() => {
-        const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+    const updateUserData = useCallback(async (uid: string) => {
+        try {
+            const docSnap = await getDoc(doc(firebase, "users", uid));
 
-            console.log('firebase', firebaseUser)
-            if(firebaseUser){
+            if (docSnap.exists()) {
+                const data = docSnap.data();
                 setUser({
-                    uid: firebaseUser?.uid,
-                    email: firebaseUser?.email,
-                    name: firebaseUser?.displayName
-                })
-                updateUserData(firebaseUser.uid);
-                router.replace("/(tabs)") 
-            }else{
-                // no user
-                setUser(null)
-                router.replace('/(auth)/welcome');
-            }  
+                    uid: data.uid ?? uid,
+                    email: data.email ?? null,
+                    name: data.name ?? null,
+                    image: data.image ?? null,
+                });
+            }
+        } catch {
+            // Firebase Auth remains the source of truth if the optional profile cannot load.
+        }
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            if (firebaseUser) {
+                setUser({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    name: firebaseUser.displayName,
+                });
+                void updateUserData(firebaseUser.uid);
+                router.replace("/(tabs)");
+                return;
+            }
+
+            setUser(null);
+            router.replace("/(auth)/welcome");
         });
-        return ()=>unsub();
-    }, [])
+
+        return unsubscribe;
+    }, [router, updateUserData]);
 
     const login = async (email: string, password: string) => {
         try {
             await signInWithEmailAndPassword(auth, email, password);                        
             return { success: true };
-        } catch (error: any) {
-            let msg = error.message;
-            console.log("error messaje", msg)
-            if(msg.includes('(auth/invalid-credential)')) msg = "Correo o contraseña son inválidos"
-            if(msg.includes('(auth/invalid-email)')) msg = "Correo electrónico inválido"
-            return { success: false, msg };
+        } catch (error: unknown) {
+            return { success: false, msg: getAuthErrorMessage(error) };
         }
     };
 
     const register = async (email: string, password: string, name:string) => {
         try {
-            let response = await createUserWithEmailAndPassword(auth, email, password);
-            await setDoc(doc(firebase, "users", response?.user?.uid), {
+            const response = await createUserWithEmailAndPassword(auth, email, password);
+            await setDoc(doc(firebase, "users", response.user.uid), {
                 name,
                 email,
-                uid:response?.user?.uid
+                uid: response.user.uid,
             });
             return { success: true };
-        } catch (error: any) {
-            let msg = error.message;
-            console.log("error message", msg)
-            if(msg.includes('(auth/email-already-in-use)')) 
-                msg = "El correo electrónico ya está en uso"
-            if(msg.includes('(auth/invalid-email)')) msg = "Correo electrónico inválido"
-            return { success: false, msg };
+        } catch (error: unknown) {
+            return { success: false, msg: getAuthErrorMessage(error) };
         }
     };
-    
-    const updateUserData = async (uid: string)=>{
-        try {
-            const docRef = doc(firebase, "users", uid);
-            const docSnap = await getDoc(docRef);
 
-            if(docSnap.exists()){
-                const data = docSnap.data();
-                const userData: UserType = {
-                    uid: data?.uid,
-                    email:data.email || null,
-                    name:data.name || null,
-                    image:data.image || null,
-                };
-                setUser({...userData})
-            }
-            
-        } catch (error: any) {
-            let msg = error.message;
-            //return { success: false, msg };
-            console.log('error: ', error);
-        }
-    };
-    const contextValue: AuthContextType ={
+    const contextValue = useMemo<AuthContextType>(() => ({
         user, 
         setUser,
         login,
         register,
-        updateUserData
-    }
+        updateUserData,
+    }), [user, updateUserData]);
     return (
          <AuthContext.Provider value={contextValue}>
             {children}
@@ -108,4 +105,4 @@ export const useAuth = (): AuthContextType => {
         throw new Error("userAuth must be wrapper inside AuthProvider");
     }
     return context;
-}
+};
