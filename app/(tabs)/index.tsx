@@ -1,5 +1,6 @@
-import HomeCard from '@/features/transactions/presentation/components/HomeCard';
 import { useFinancialData } from '@/features/financeApi/presentation/hooks/useFinancialData';
+import { getProfileImage } from '@/features/ocr/application/services/imageService';
+import HomeCard from '@/features/transactions/presentation/components/HomeCard';
 import TransactionList from '@/features/transactions/presentation/components/TransactionList';
 import Button from '@/shared/components/Button';
 import EmptyState from '@/shared/components/EmptyState';
@@ -7,7 +8,6 @@ import ScreenWrapper from '@/shared/components/ScreenWrapper';
 import Typo from '@/shared/components/Typo';
 import { colors, radius, spacingX, spacingY } from '@/shared/constants/theme';
 import { verticalScale } from '@/shared/utils/styling';
-import { getProfileImage } from '@/features/ocr/application/services/imageService';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as Icons from 'phosphor-react-native';
@@ -25,6 +25,11 @@ const Home = () => {
   const filteredTransactions = useMemo(
     () => transactions
       .filter((transaction) => selectedWalletId === 'all' || transaction.walletId === selectedWalletId)
+      .sort((first, second) => {
+        const firstTime = new Date(first.date).getTime();
+        const secondTime = new Date(second.date).getTime();
+        return (Number.isNaN(secondTime) ? 0 : secondTime) - (Number.isNaN(firstTime) ? 0 : firstTime);
+      })
       .slice(0, 30),
     [selectedWalletId, transactions],
   );

@@ -5,8 +5,8 @@ import { useRouter } from 'expo-router'
 import { Timestamp } from 'firebase/firestore'
 import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
-import Loading from '../../../../shared/components/Loading'
 import EmptyState from '../../../../shared/components/EmptyState'
+import Loading from '../../../../shared/components/Loading'
 import Typo from '../../../../shared/components/Typo'
 import { TransactionItemProps, TransactionListType, TransactionType } from '../../../../shared/types'
 import { verticalScale } from '../../../../shared/utils/styling'
@@ -20,16 +20,23 @@ const TransactionList = ({
 
   const router = useRouter()
 
+  const toDate = (value: TransactionType['date']) => {
+    if (value instanceof Timestamp) return value.toDate()
+    if (value instanceof Date) return value
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
   const handleClick = (item: TransactionType)=>{
-    // todo: open transaction details
+    const transactionDate = toDate(item.date)
     router.push({
-      pathname: "/(modals)/transactionModal",
+      pathname: "/(modals)/transactionDetails",
       params: {
         id: item?.id,
         type: item?.type,
         amount: item?.amount?.toString(),
         category: item?.category,
-        date: (item.date as Timestamp)?.toDate()?.toISOString(),
+        date: transactionDate?.toISOString() || '',
         description : item?.description,
         image: item?.image,
         uid: item?.uid,
@@ -79,7 +86,7 @@ const TransactionItem = ({
   item, index, handleClick
 }: TransactionItemProps)=>{
   // console.log('item.description: ', item?.description)
-  let category = item?.type === 'income'? incomeCategory : expenseCategories[item.category!]
+  const category = item?.type === 'income' ? incomeCategory : expenseCategories[item.category!] || expenseCategories.others
   const IconComponent = category.icon;
 
   const rawDate = item?.date;

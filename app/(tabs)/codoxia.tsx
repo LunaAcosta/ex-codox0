@@ -8,22 +8,22 @@ import { scale, verticalScale } from '@/shared/utils/styling'
 import * as Icons from 'phosphor-react-native'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Animated,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useAuth } from '../../src/contexts/authContext'
 import {
-    analyzeFinancials,
-    getDailyTip,
-    getRecommendationHistory,
-    markRecommendationAsRead,
-    RecommendationRecord,
+  analyzeFinancials,
+  getDailyTip,
+  getRecommendationHistory,
+  markRecommendationAsRead,
+  RecommendationRecord,
 } from '../../src/features/recommendations/application/services/recommendationService'
 
 // ─────────────────────────────────────────────
@@ -41,9 +41,11 @@ const SectionCard = ({
 const cardStyles = StyleSheet.create({
   card: {
     backgroundColor: colors.neutral800,
-    borderRadius: radius._10,
+    borderRadius: radius._20,
     padding: spacingX._15,
     marginBottom: spacingY._12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 })
 
@@ -114,6 +116,7 @@ const RiskIndicator = ({ level }: { level: 'green' | 'yellow' | 'red' }) => {
 // ─────────────────────────────────────────────
 
 const CodoxIA = () => {
+  const [activeView, setActiveView] = useState<'today' | 'future' | 'guidance'>('today')
   const [showAssistant, setShowAssistant] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [dailyTip, setDailyTip] = useState<string>('')
@@ -214,7 +217,7 @@ const CodoxIA = () => {
     <ScreenWrapper>
       <View style={styles.wrapper}>
         <View style={styles.pageHeader}>
-          <View><Typo size={12} color={colors.neutral400}>TU CENTRO DE BIENESTAR</Typo><Typo size={24} fontWeight="900">Codox inteligente</Typo></View>
+          <View style={{ flex: 1 }}><Typo size={12} color={colors.neutral400}>BIENESTAR FINANCIERO</Typo><Typo size={24} fontWeight="900">Tu panorama</Typo><Typo size={11} color={colors.neutral400}>Lo importante, explicado de forma simple</Typo></View>
           <View style={styles.headerIcon}><Icons.Sparkle size={21} color={colors.primary} weight="fill" /></View>
         </View>
 
@@ -234,6 +237,17 @@ const CodoxIA = () => {
             <View style={{ flex: 1 }}><Typo size={15} fontWeight="800">Pregunta a tu asistente</Typo><Typo size={11} color={colors.neutral400}>Respuestas breves basadas en tus datos</Typo></View>
             <Icons.ArrowRight size={19} color={colors.primary} weight="bold" />
           </TouchableOpacity>
+          <View style={styles.viewSelector}>
+            {([
+              { key: 'today' as const, label: 'Hoy', icon: Icons.Heart },
+              { key: 'future' as const, label: 'Futuro', icon: Icons.CalendarCheck },
+              { key: 'guidance' as const, label: 'Consejos', icon: Icons.LightbulbFilament },
+            ]).map((option) => {
+              const OptionIcon = option.icon
+              const selected = activeView === option.key
+              return <Pressable key={option.key} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setActiveView(option.key)} style={[styles.viewOption, selected && styles.viewOptionActive]}><OptionIcon size={16} color={selected ? colors.neutral900 : colors.neutral400} weight="fill" /><Typo size={11} color={selected ? colors.neutral900 : colors.neutral400} fontWeight="800">{option.label}</Typo></Pressable>
+            })}
+          </View>
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -244,31 +258,20 @@ const CodoxIA = () => {
           ) : (
             <Animated.View style={{ opacity: fadeAnim }}>
               {/* ── 1. Financial Status ── */}
-              {insights && (
+              {activeView === 'today' && insights && (
                 <SectionCard style={styles.statusCard}>
-                  <Typo size={12} color={colors.neutral400} fontWeight="600">
-                    ESTADO FINANCIERO ACTUAL
-                  </Typo>
+                  <View style={styles.balanceHeading}>
+                    <View><Typo size={10} color={colors.neutral400} fontWeight="700">SALDO DISPONIBLE</Typo><Typo size={27} fontWeight="900" color={colors.primary}>{formatCurrency(insights.totalBalance)}</Typo></View>
+                    <View style={[styles.healthPill, { backgroundColor: `${insights.savingsRate >= 15 ? colors.green : insights.savingsRate >= 5 ? colors.primary : colors.rose}18` }]}><Icons.Heartbeat size={15} color={insights.savingsRate >= 15 ? colors.green : insights.savingsRate >= 5 ? colors.primary : colors.rose} weight="fill" /><Typo size={9} color={insights.savingsRate >= 15 ? colors.green : insights.savingsRate >= 5 ? colors.primary : colors.rose} fontWeight="900">{insights.savingsRate >= 15 ? 'Buen ritmo' : insights.savingsRate >= 5 ? 'En progreso' : 'Revisar gastos'}</Typo></View>
+                  </View>
                   <View style={styles.statusRow}>
                     <View style={styles.statItem}>
-                      <Typo size={11} color={colors.neutral400}>Saldo total</Typo>
-                      <Typo size={18} fontWeight="700" color={colors.primary}>
-                        {formatCurrency(insights.totalBalance)}
-                      </Typo>
+                      <View style={[styles.miniStatIcon, { backgroundColor: `${colors.green}16` }]}><Icons.ArrowDownLeft size={16} color={colors.green} weight="bold" /></View>
+                      <View><Typo size={10} color={colors.neutral400}>Ingresó este mes</Typo><Typo size={15} fontWeight="800" color={colors.green}>{formatCurrency(insights.currentMonthIncome)}</Typo></View>
                     </View>
-                    <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                      <Typo size={11} color={colors.neutral400}>Ingresos mes</Typo>
-                      <Typo size={18} fontWeight="700" color={colors.green}>
-                        {formatCurrency(insights.currentMonthIncome)}
-                      </Typo>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                      <Typo size={11} color={colors.neutral400}>Gastos mes</Typo>
-                      <Typo size={18} fontWeight="700" color={colors.rose}>
-                        {formatCurrency(insights.currentMonthExpenses)}
-                      </Typo>
+                      <View style={[styles.miniStatIcon, { backgroundColor: `${colors.rose}16` }]}><Icons.ArrowUpRight size={16} color={colors.rose} weight="bold" /></View>
+                      <View><Typo size={10} color={colors.neutral400}>Gastó este mes</Typo><Typo size={15} fontWeight="800" color={colors.rose}>{formatCurrency(insights.currentMonthExpenses)}</Typo></View>
                     </View>
                   </View>
 
@@ -303,7 +306,7 @@ const CodoxIA = () => {
                 </SectionCard>
               )}
               {/* ── 4. Category Analysis ── */}
-              {insights && insights.categoryAnalysis.length > 0 && (
+              {activeView === 'today' && insights && insights.categoryAnalysis.length > 0 && (
                 <SectionCard>
                   <SectionTitle
                     icon={<Icons.ChartPieSlice color={colors.primary} weight="fill" size={scale(18)} />}
@@ -349,7 +352,7 @@ const CodoxIA = () => {
               )}
 
               {/* ── 2. Daily Tip ── */}
-              {transactions.length > 0 && (
+              {activeView === 'guidance' && transactions.length > 0 && (
                 <SectionCard>
                   <SectionTitle
                     icon={<Icons.LightbulbFilament color={colors.primary} weight="fill" size={scale(18)} />}
@@ -366,7 +369,7 @@ const CodoxIA = () => {
               )}
 
               {/* ── 3. Alerts ── */}
-              {insights && (
+              {activeView === 'today' && insights && (
                 <SectionCard>
                   <SectionTitle
                     icon={<Icons.WarningCircle color={displayAlerts.some((alert) => alert.severity === 'high') ? colors.rose : colors.primary} weight="fill" size={scale(18)} />}
@@ -383,10 +386,18 @@ const CodoxIA = () => {
                 </SectionCard>
               )}
 
+              {activeView === 'guidance' && transactions.length === 0 && (
+                <SectionCard style={styles.guidanceEmpty}>
+                  <View style={styles.guidanceEmptyIcon}><Icons.LightbulbFilament size={25} color={colors.primary} weight="fill" /></View>
+                  <Typo size={14} fontWeight="800">Tus consejos aparecerán aquí</Typo>
+                  <Typo size={11} color={colors.neutral400} style={{ textAlign: 'center' }}>Registra algunos ingresos y gastos para recibir orientación basada en tu actividad.</Typo>
+                </SectionCard>
+              )}
+
 
 
               {/* ── 5. Balance Projection ── */}
-              {insights && (
+              {activeView === 'future' && insights && (
                 <SectionCard>
                   <SectionTitle
                     icon={<Icons.CalendarCheck color={colors.primary} weight="fill" size={scale(18)} />}
@@ -452,7 +463,7 @@ const CodoxIA = () => {
               )}
 
               {/* ── 6. Month Projection ── */}
-              {insights && (
+              {activeView === 'future' && insights && (
                 <SectionCard>
                   <SectionTitle
                     icon={<Icons.TrendUp color={colors.primary} weight="fill" size={scale(18)} />}
@@ -495,7 +506,7 @@ const CodoxIA = () => {
               )}
 
               {/* ── 7. Personalized Recommendations ── */}
-              {insights && insights.personalizedRecommendations.length > 0 && (
+              {activeView === 'guidance' && insights && insights.personalizedRecommendations.length > 0 && (
                 <SectionCard>
                   <SectionTitle
                     icon={<Icons.Sparkle color={colors.primary} weight="fill" size={scale(18)} />}
@@ -528,7 +539,7 @@ const CodoxIA = () => {
               )}
 
               {/* ── 8. Recommendation History ── */}
-              {transactions.length > 0 && (
+              {activeView === 'guidance' && transactions.length > 0 && (
                 <SectionCard>
                   <Pressable
                     onPress={toggleHistory}
@@ -646,6 +657,9 @@ const styles = StyleSheet.create({
   headerIcon: { width: 44, height: 44, borderRadius: radius._15, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.primary}18` },
   assistantBanner: { flexDirection: 'row', alignItems: 'center', gap: spacingX._10, padding: spacingX._12, borderRadius: radius._17, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: spacingY._15 },
   assistantBannerIcon: { width: 44, height: 44, borderRadius: radius._15, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.primary}18` },
+  viewSelector: { flexDirection: 'row', gap: spacingX._7, padding: 5, marginBottom: spacingY._15, borderRadius: radius._17, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  viewOption: { flex: 1, minHeight: verticalScale(42), flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: radius._12 },
+  viewOptionActive: { backgroundColor: colors.primary },
   scroll: {
     paddingTop: spacingY._5,
   },
@@ -658,22 +672,28 @@ const styles = StyleSheet.create({
   statusCard: {
     borderWidth: 1,
     borderColor: `${colors.primary}44`,
+    padding: spacingX._20,
   },
+  balanceHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacingX._10 },
+  healthPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius._20 },
   statusRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: spacingX._10,
     marginTop: spacingY._10,
   },
   statItem: {
     flex: 1,
+    minHeight: verticalScale(58),
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: verticalScale(3),
+    gap: spacingX._7,
+    padding: spacingX._10,
+    borderRadius: radius._15,
+    backgroundColor: colors.surfaceElevated,
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: colors.neutral700,
-    marginHorizontal: spacingX._5,
-  },
+  miniStatIcon: { width: 30, height: 30, borderRadius: radius._10, alignItems: 'center', justifyContent: 'center' },
+  guidanceEmpty: { alignItems: 'center', gap: spacingY._7, paddingVertical: spacingY._25 },
+  guidanceEmptyIcon: { width: 48, height: 48, borderRadius: radius._17, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.primary}16` },
   progressBg: {
     height: verticalScale(5),
     backgroundColor: colors.neutral700,
