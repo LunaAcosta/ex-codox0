@@ -1,0 +1,22 @@
+# Virtual Environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Firebase Credentials
+credentials/
+*.json
