@@ -160,7 +160,9 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(forbidden.status_code, 403)
 
     def test_ai_reuses_cache_and_saves_new_recommendations(self) -> None:
-        service = AIService()
+        # Evita inicializar Firebase real al crear AIService en entornos CI.
+        with patch("app.services.finance_service.FirebaseRepository"):
+            service = AIService()
         profile = {
             "user": {"uid": TEST_UID, "name": "Test"},
             "summary": {"balance": 100, "income": 200, "expenses": 100, "saving": 100, "savingRate": 50},
