@@ -1,0 +1,14 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: finance-ai-api:week4
+    container_name: finance-ai-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./credentials/firebase-admin.json:/app/credentials/firebase-admin.json:ro
+    restart: unless-stopped
