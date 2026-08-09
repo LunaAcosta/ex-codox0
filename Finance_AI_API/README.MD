@@ -1,109 +1,156 @@
 # Finance AI API
 
-Backend de Finance App construido con FastAPI. Valida usuarios con Firebase Authentication, centraliza el acceso a Firestore y expone OCR, análisis financiero con IA, recomendaciones persistentes y recordatorios de pago.
+Backend en FastAPI para finanzas personales con Firebase (Auth + Firestore) y OpenAI.
 
-## Responsabilidades
+## 1. Qué hace este servicio
 
-- Validar Firebase ID tokens y aislar los datos por usuario.
-- Consultar billeteras, movimientos, recomendaciones y recordatorios en Firestore.
-- Generar respuestas financieras breves y enfocadas con OpenAI.
-- Extraer monto, fecha del recibo, descripción y categoría desde imágenes.
-- Reutilizar resultados de IA cuando los datos financieros no han cambiado.
-- Convertir recordatorios vencidos con cargo automático en gastos.
+- Valida Firebase ID tokens y restringe datos por usuario.
+- Consulta usuarios, wallets, transacciones, recomendaciones y recordatorios en Firestore.
+- Ejecuta capacidades de IA (summary, analyze, recommend, predict, classify, chat).
+- Analiza recibos/facturas con OCR asistido por IA.
 
-## Estructura
+## 2. Estructura del proyecto
 
 ```text
 app/
-  core/                 Configuración, Firebase, seguridad y logging
-  repositories/         Acceso a Firestore
-  routers/              Rutas HTTP
-  schemas/              Modelos de entrada y salida
-  services/             Reglas financieras, IA, OCR y recordatorios
-  main.py               Aplicación FastAPI
-credentials/            Credenciales locales de Firebase Admin (ignoradas por Git)
-docs/                    Contrato y ejemplos de la API
-tests/                   Pruebas automatizadas
+  core/                  Configuración, Firebase, seguridad y logging
+  repositories/          Acceso a Firestore
+  routers/               Endpoints HTTP
+  schemas/               Modelos de request/response
+  services/              Lógica de negocio, IA, OCR y recordatorios
+  main.py                Entrypoint FastAPI (objeto app)
+credentials/             Credencial local Firebase Admin (no versionar)
+docs/                    Contrato y ejemplos de API
+tests/                   Pruebas
 ```
 
-## Requisitos
+## 3. Requisitos
 
-- Python 3.11 o superior.
-- Un proyecto Firebase con Authentication y Firestore.
-- Una clave de OpenAI.
-- El archivo de cuenta de servicio Firebase Admin.
+- Python 3.11+
+- Docker Desktop (para ejecución en contenedor)
+- Proyecto Firebase con Authentication y Firestore
+- API key de OpenAI
+- Archivo de servicio Firebase Admin
 
-## Instalación
+## 4. Configuración inicial
+
+1. Copia variables de entorno:
 
 ```powershell
-cd C:\Users\CM\Documents\FinanceApp\Finance_AI_API
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Guarda la cuenta de servicio en:
+2. Completa en `.env` los valores reales, especialmente `OPENAI_API_KEY`.
+
+3. Coloca la credencial Firebase Admin en:
 
 ```text
 credentials/firebase-admin.json
 ```
 
-No publiques ese archivo ni el `.env`.
+Seguridad:
 
-## Configuración
+- No subir `.env` al repositorio.
+- No subir `credentials/firebase-admin.json` al repositorio.
+- No copiar secretos dentro de la imagen Docker.
 
-Variables principales:
+## 5. Ejecución local (sin Docker)
 
-```dotenv
-APP_NAME=Finance AI API
-APP_VERSION=1.0.0
-ENVIRONMENT=development
-HOST=127.0.0.1
-PORT=8000
-CORS_ORIGINS=http://localhost:8081,http://127.0.0.1:8081
+1. Crear y activar entorno virtual:
 
-OPENAI_API_KEY=YOUR_OPENAI_API_KEY
-OPENAI_MODEL=gpt-5.5
-OPENAI_MAX_OUTPUT_TOKENS=220
-OPENAI_OCR_MODEL=gpt-4.1-mini
-OCR_MAX_FILE_SIZE_MB=10
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
 
-El modelo y el límite de salida son configurables. Mantener un límite corto reduce costo y evita respuestas extensas. La implementación actual de Firebase Admin carga `credentials/firebase-admin.json`.
+2. Instalar dependencias:
 
-## Ejecución
+```powershell
+pip install -r requirements.txt
+```
 
-Para uso local en la misma computadora:
+3. Levantar API:
 
 ```powershell
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Para permitir conexiones desde un teléfono en la red local:
+URLs útiles:
+
+- API: http://127.0.0.1:8000
+- Swagger: http://127.0.0.1:8000/docs
+- ReDoc: http://127.0.0.1:8000/redoc
+- Health: http://127.0.0.1:8000/health/
+
+## 6. Ejecución con contenedor (Docker Compose)
+
+Archivos preparados:
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `.dockerignore`
+
+Pasos:
+
+1. Construir imagen:
 
 ```powershell
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+docker compose build
 ```
 
-Recursos disponibles:
+2. Levantar contenedor:
 
-- API: `http://127.0.0.1:8000`
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
-- Salud: `http://127.0.0.1:8000/health/`
-
-## Autenticación y privacidad
-
-Las rutas `/ai`, `/data` y `/users` requieren:
-
-```http
-Authorization: Bearer FIREBASE_ID_TOKEN
+```powershell
+docker compose up -d
 ```
 
-Cuando una ruta contiene `{uid}`, ese valor debe coincidir con el usuario del token. La API responde `401` si falta o no es válido y `403` si se intenta acceder a otro usuario. `/`, `/health/` y `/metadata/` son públicas.
+3. Ver estado:
 
-## Rutas principales
+```powershell
+docker compose ps
+```
+
+4. Revisar logs:
+
+```powershell
+docker logs finance-ai-api
+```
+
+5. Bajar servicios:
+
+```powershell
+docker compose down
+```
+
+Notas importantes:
+
+- `docker-compose.yml` carga variables con `env_file: .env`.
+- La credencial Firebase se monta como volumen de solo lectura:
+  `./credentials/firebase-admin.json:/app/credentials/firebase-admin.json:ro`
+
+## 7. Pruebas rápidas del servicio
+
+1. Health:
+
+```powershell
+curl.exe -L http://localhost:8000/health/
+```
+
+2. Endpoint principal IA (protegido):
+
+```powershell
+curl.exe -X POST http://localhost:8000/ai/chat `
+  -H "Content-Type: application/json" `
+  -H "Authorization: Bearer TU_FIREBASE_ID_TOKEN" `
+  -d "{\"uid\":\"UID_REAL_DEL_USUARIO\",\"question\":\"¿Cómo puedo ahorrar más dinero este mes?\"}"
+```
+
+Requisitos para endpoints protegidos:
+
+- Header `Authorization: Bearer <ID_TOKEN_FIREBASE>`.
+- El `uid` del body/ruta debe coincidir con el uid del token.
+
+## 8. Rutas principales
 
 | Área | Métodos y rutas |
 |---|---|
@@ -115,19 +162,26 @@ Cuando una ruta contiene `{uid}`, ese valor debe coincidir con el usuario del to
 | IA | `POST /ai/summary/{uid}`, `/analyze/{uid}`, `/recommend/{uid}`, `/predict/{uid}`, `/classify/{uid}`, `/chat` |
 | OCR | `POST /ai/ocr` |
 
-El contrato completo, payloads y respuestas están en [docs/api.md](docs/api.md).
+Contrato completo y ejemplos:
 
-## Persistencia y consumo de IA
+- [docs/api.md](docs/api.md)
+- [docs/CURL_EXAMPLES.md](docs/CURL_EXAMPLES.md)
+- [docs/POSTMAN_TESTS.md](docs/POSTMAN_TESTS.md)
 
-Las consultas financieras normales se resuelven desde Firestore y no consumen tokens. Los resultados reutilizables de IA se asocian a una huella de los datos financieros; al cambiar la información, la siguiente solicitud genera un resultado actualizado. Las recomendaciones generadas se guardan en el historial del usuario.
+## 9. Despliegue mínimo recomendado (siguiente fase)
 
-Los recordatorios con `autoCharge=true` pueden ser procesados por el servicio al vencer. El procesamiento crea el gasto, descuenta la billetera y marca el recordatorio como completado de forma coherente.
+Para un servidor pequeño (VPS o PaaS con Docker):
 
-## Pruebas
+1. Provisionar host Linux con Docker + Docker Compose.
+2. Copiar proyecto (sin `.env` real y sin credencial en Git).
+3. Cargar secretos en el servidor (`.env` y `firebase-admin.json`).
+4. Ejecutar `docker compose up -d --build`.
+5. Exponer servicio detrás de reverse proxy con TLS.
+6. Monitorear logs y endpoint `/health/`.
+
+## 10. Pruebas de calidad
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 .\.venv\Scripts\python.exe -m compileall -q app
 ```
-
-Para revisar el contrato interactivo, inicia el servidor y utiliza Swagger. También existen ejemplos complementarios en `docs/CURL_EXAMPLES.md` y `docs/POSTMAN_TESTS.md`.
