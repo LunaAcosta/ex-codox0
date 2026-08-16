@@ -10,5 +10,6 @@ __pycache__/
 .env.*
 credentials/
 tests/
+docs/
 .vscode/
 *.log
