@@ -91,11 +91,13 @@ class FirebaseRepository:
     # RECOMMENDATIONS
     # ============================================
 
-    def get_recommendations(self, uid: str):
+    def get_recommendations(self, uid: str, limit: int = 5):
         docs = (
             self.db.collection("recommendationHistory")
             .document(uid)
             .collection("items")
+            .order_by("createdAt", direction="DESCENDING")
+            .limit(limit)
             .stream()
         )
 
@@ -106,9 +108,8 @@ class FirebaseRepository:
             data["id"] = doc.id
             recommendations.append(data)
 
-        recommendations.sort(key=lambda item: str(item.get("createdAt", "")), reverse=True)
         return recommendations
-
+        
     def save_recommendation(self, uid: str, text: str, source: str = "ai"):
         record = {
             "type": "recommendation",
