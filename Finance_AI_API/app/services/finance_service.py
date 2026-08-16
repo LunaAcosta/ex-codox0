@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.services.context_builder import ContextBuilder
 from app.services.openai_service import OpenAIService
 from app.repositories.firebase_repository import FirebaseRepository
@@ -82,27 +83,85 @@ class FinanceService:
     # PERFIL COMPLETO
     # ============================================
 
-    def build_finance_profile(self, uid):
-        wallets = self.get_wallets(uid)
-        transactions = self.get_transactions(uid)
-        income = sum(float(wallet.get("totalIncome", 0) or 0) for wallet in wallets)
-        expenses = sum(float(wallet.get("totalExpenses", 0) or 0) for wallet in wallets)
+    def build_finance_profile(self, uid: str):
+
+        # Keep an early user existence check to avoid unnecessary work for invalid UIDs
+        user = self.get_user(uid)
+
+        if user is None:
+            return {
+                "user": None,
+            }
+
+        # Parallelize independent Firestore reads to reduce wall-clock latency
+        fetchers = {
+            "wallets": (self.get_wallets, uid),
+            "transactions": (self.get_transactions, uid),
+            "daily_tip": (self.get_daily_tip, uid),
+            "recommendations": (self.get_recommendations, uid),
+        }
+
+        results = {}
+        # Use a small thread pool suitable for IO-bound Firestore calls
+        with ThreadPoolExecutor(max_workers=min(5, len(fetchers))) as executor:
+            future_to_key = {
+                executor.submit(func, arg): key
+                for key, (func, arg) in fetchers.items()
+            }
+
+            for future in as_completed(future_to_key):
+                key = future_to_key[future]
+                try:
+                    results[key] = future.result()
+                except Exception:
+                    # If a particular optional piece fails, fall back to empty/default
+                    results[key] = [] if key in ("wallets", "transactions") else None
+
+        wallets = results.get("wallets", []) or []
+        transactions = results.get("transactions", []) or []
+        daily_tip = results.get("daily_tip")
+        recommendations = results.get("recommendations")
+
+        # Aggregate wallet numbers locally (CPU-bound but trivial cost)
+        income = 0.0
+        expenses = 0.0
+        balance = 0.0
+
+        for wallet in wallets:
+            try:
+                income += float(wallet.get("totalIncome", 0) or 0)
+            except Exception:
+                pass
+            try:
+                expenses += float(wallet.get("totalExpenses", 0) or 0)
+            except Exception:
+                pass
+            try:
+                balance += float(wallet.get("amount", 0) or 0)
+            except Exception:
+                pass
+
         saving = income - expenses
+        saving_rate = round((saving / income) * 100, 2) if income else 0
+
+        statistics = StatisticsService(transactions).build()
+
         return {
-            "user": self.get_user(uid),
+            "user": user,
             "summary": {
-                "balance": sum(float(wallet.get("amount", 0) or 0) for wallet in wallets),
+                "balance": balance,
                 "income": income,
                 "expenses": expenses,
                 "saving": saving,
-                "savingRate": round((saving / income) * 100, 2) if income else 0,
+                "savingRate": saving_rate,
             },
             "wallets": wallets,
             "transactions": transactions,
-            "statistics": StatisticsService(transactions).build(),
-            "dailyTip": self.get_daily_tip(uid),
-            "recommendations": self.get_recommendations(uid),
+            "statistics": statistics,
+            "dailyTip": daily_tip,
+            "recommendations": recommendations,
         }
+
 
     # ============================================
     # IA

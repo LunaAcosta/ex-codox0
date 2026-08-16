@@ -6,70 +6,79 @@ class StatisticsService:
         self.transactions = transactions or []
 
     # ============================================
-    # MAYOR INGRESO
-    # ============================================
-
-    def largest_income(self):
-
-        incomes = [
-            t for t in self.transactions if str(t.get("type", "")).lower() == "income"
-        ]
-
-        if not incomes:
-            return None
-
-        transaction = max(incomes, key=lambda t: float(t.get("amount", 0)))
-
-        return {
-            "amount": transaction.get("amount", 0),
-            "category": transaction.get("category", ""),
-            "description": transaction.get("description", ""),
-        }
-
-    # ============================================
-    # MAYOR GASTO
-    # ============================================
-
-    def largest_expense(self):
-
-        expenses = [
-            t for t in self.transactions if str(t.get("type", "")).lower() == "expense"
-        ]
-
-        if not expenses:
-            return None
-
-        transaction = max(expenses, key=lambda t: float(t.get("amount", 0)))
-
-        return {
-            "amount": transaction.get("amount", 0),
-            "category": transaction.get("category", ""),
-            "description": transaction.get("description", ""),
-        }
-
-    # ============================================
-    # CATEGORÍA FAVORITA
-    # ============================================
-
-    def favorite_category(self):
-
-        categories = [t.get("category") for t in self.transactions if t.get("category")]
-
-        if not categories:
-            return None
-
-        counter = Counter(categories)
-
-        return counter.most_common(1)[0][0]
-
-    # ============================================
     # BUILD
     # ============================================
 
     def build(self):
 
+        largest_income = None
+        largest_expense = None
+        categories = Counter()
+
+        for transaction in self.transactions:
+
+            transaction_type = str(
+                transaction.get("type", "")
+            ).lower()
+
+            amount = float(
+                transaction.get("amount", 0) or 0
+            )
+
+            category = transaction.get("category")
+
+            if category:
+                categories[category] += 1
+
+            # ====================================
+            # MAYOR INGRESO
+            # ====================================
+
+            if transaction_type == "income":
+
+                if (
+                    largest_income is None
+                    or amount > float(
+                        largest_income.get("amount", 0) or 0
+                    )
+                ):
+                    largest_income = {
+                        "amount": amount,
+                        "category": category or "",
+                        "description": transaction.get(
+                            "description",
+                            "",
+                        ),
+                    }
+
+            # ====================================
+            # MAYOR GASTO
+            # ====================================
+
+            elif transaction_type == "expense":
+
+                if (
+                    largest_expense is None
+                    or amount > float(
+                        largest_expense.get("amount", 0) or 0
+                    )
+                ):
+                    largest_expense = {
+                        "amount": amount,
+                        "category": category or "",
+                        "description": transaction.get(
+                            "description",
+                            "",
+                        ),
+                    }
+
+        favorite_category = None
+
+        if categories:
+            favorite_category = categories.most_common(1)[0][0]
+
         return {
-            "largestIncome": self.largest_income(),
-            "largestExpense": self.largest_expense(),
-            "favoriteCategory": self.favorite_category(),
+            "largestIncome": largest_income,
+            "largestExpense": largest_expense,
+            "favoriteCategory": favorite_category,
         }

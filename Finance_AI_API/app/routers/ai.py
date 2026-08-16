@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Path, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Path, UploadFile, status, Request
 
 from app.services.ai_service import AIService, AICapability
 from app.schemas.ai import AIResponse, ErrorResponse, OCRResponse
@@ -272,23 +272,29 @@ async def recommend_finances(
 # AI PREDICT
 # =====================================================
 
-
 @router.post(
     "/predict/{uid}",
     response_model=AIResponse,
     status_code=status.HTTP_200_OK,
     summary="Predecir comportamiento financiero",
     description="""
-Genera una predicción del comportamiento financiero futuro del usuario
-utilizando Inteligencia Artificial.
-""",
+    Genera una predicción del comportamiento financiero futuro del usuario
+    utilizando Inteligencia Artificial.
+    """,
     response_description=ResponseDescriptions.PREDICT,
     responses={
-        404: {"model": ErrorResponse, "description": "Usuario no encontrado."},
-        500: {"model": ErrorResponse, "description": "Error interno del servidor."},
+        404: {
+            "model": ErrorResponse,
+            "description": "Usuario no encontrado.",
+        },
+        500: {
+            "model": ErrorResponse,
+            "description": "Error interno del servidor.",
+        },
     },
 )
 async def predict_finances(
+    request: Request,
     uid: str = Path(
         ...,
         title="UID",
@@ -297,13 +303,13 @@ async def predict_finances(
     ),
     current_uid: str = Depends(get_current_uid),
 ):
-
     require_same_user(uid, current_uid)
 
     try:
         prediction = ai_service.execute(
             uid=uid,
             capability=AICapability.PREDICT,
+            request_id=request.state.request_id,
         )
 
         return AIResponse(
@@ -321,13 +327,21 @@ async def predict_finances(
             detail=str(ex),
         )
 
-    except Exception as ex:
-        logger.exception("Error generando predicción para uid=%s", uid)
+    except Exception:
+        logger.exception(
+            "Error generando predicción",
+            extra={
+                "extra_fields": {
+                    "event": "ai_prediction_failed",
+                    "request_id": request.state.request_id,
+                }
+            },
+        )
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No fue posible generar la predicción financiera.",
         )
-
 
 # =====================================================
 # AI CLASSIFY
