@@ -8,6 +8,7 @@ from app.core.logger import logger
 from app.services.finance_service import FinanceService
 from app.services.context_builder import ContextBuilder
 from app.services.openai_service import OpenAIService
+from app.core.config import settings
 
 
 # ==========================================================
@@ -265,7 +266,7 @@ class AIService:
 
         content = self.openai.generate(
             prompt=prompt,
-            context=context,
+            context=context[: settings.OPENAI_MAX_CONTEXT_CHARS],
         )
 
         ai_ms = (
@@ -364,7 +365,7 @@ class AIService:
 
         context = self._build_context(uid)
 
-        prompt = f"""
+        prompt = """
         Eres el asistente financiero de Ex-Codox.
         Responde siempre en español, en máximo 80 palabras y únicamente sobre
         finanzas personales del usuario autenticado. Usa solo el contexto
@@ -372,11 +373,10 @@ class AIService:
         innecesaria. Si faltan datos, dilo brevemente. Si la pregunta no es
         financiera, responde exactamente:
         "Solo puedo ayudarte con tus finanzas personales."
-
-        Pregunta: {question}
         """
 
         return self.openai.generate(
             prompt=prompt,
-            context=context,
+            context=context[: settings.OPENAI_MAX_CONTEXT_CHARS],
+            user_input=question,
         )

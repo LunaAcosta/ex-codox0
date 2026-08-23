@@ -32,8 +32,8 @@ FirebaseClient.initialize()
 # ==========================================================
 
 app = FastAPI(
-    title=ApiInfo.TITLE,
-    version=ApiInfo.VERSION,
+    title=f"{ApiInfo.NAME} v{settings.APP_VERSION}",
+    version=settings.APP_VERSION,
     description=ApiInfo.DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
 )

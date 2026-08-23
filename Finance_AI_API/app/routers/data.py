@@ -13,7 +13,7 @@ reminder_service = ReminderService()
 
 @router.get("/financial/{uid}")
 async def get_financial_data(
-    uid: str = Path(..., min_length=20),
+    uid: str = Path(..., min_length=20, max_length=128, pattern=r"^[A-Za-z0-9_-]+$"),
     current_uid: str = Depends(get_current_uid),
 ):
     require_same_user(uid, current_uid)
@@ -38,7 +38,7 @@ async def get_financial_data(
 
 @router.get("/recommendations/{uid}")
 async def get_recommendations(
-    uid: str = Path(..., min_length=20),
+    uid: str = Path(..., min_length=20, max_length=128, pattern=r"^[A-Za-z0-9_-]+$"),
     current_uid: str = Depends(get_current_uid),
 ):
     require_same_user(uid, current_uid)
@@ -65,14 +65,14 @@ async def mark_recommendation_read(
 
 
 @router.get("/reminders/{uid}")
-async def get_payment_reminders(uid: str = Path(..., min_length=20), current_uid: str = Depends(get_current_uid)):
+async def get_payment_reminders(uid: str = Path(..., min_length=20, max_length=128, pattern=r"^[A-Za-z0-9_-]+$"), current_uid: str = Depends(get_current_uid)):
     require_same_user(uid, current_uid)
     data = reminder_service.list(uid)
     return {"success": True, "message": "Pagos programados actualizados.", "count": len(data), "data": data}
 
 
 @router.post("/reminders/{uid}", status_code=status.HTTP_201_CREATED)
-async def create_payment_reminder(payload: PaymentReminderCreate, uid: str = Path(..., min_length=20), current_uid: str = Depends(get_current_uid)):
+async def create_payment_reminder(payload: PaymentReminderCreate, uid: str = Path(..., min_length=20, max_length=128, pattern=r"^[A-Za-z0-9_-]+$"), current_uid: str = Depends(get_current_uid)):
     require_same_user(uid, current_uid)
     try:
         data = reminder_service.create(uid, payload.model_dump())

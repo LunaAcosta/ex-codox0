@@ -5,9 +5,6 @@
 
 class ApiInfo:
     NAME = "Finance AI API"
-    VERSION = "1.0.0"
-
-    TITLE = f"{NAME} v{VERSION}"
 
     DESCRIPTION = """
 # 💰 Finance AI API

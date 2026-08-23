@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ==========================================================
@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     uid: str = Field(
         ...,
         description="UID del usuario registrado en Firebase.",
@@ -24,6 +26,14 @@ class ChatRequest(BaseModel):
         min_length=2,
         max_length=500,
     )
+
+    @field_validator("uid", "question")
+    @classmethod
+    def reject_blank_text(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("El campo no puede estar vacío.")
+        return normalized
 
 
 # ==========================================================
@@ -56,11 +66,11 @@ class ErrorResponse(BaseModel):
 
 
 class OCRData(BaseModel):
-    amount: Optional[float] = None
-    date: Optional[str] = None
-    description: str = "Documento escaneado"
-    category: str = "others"
-    rawText: Optional[str] = None
+    amount: Optional[float] = Field(default=None, ge=0, le=10_000_000)
+    date: Optional[str] = Field(default=None, max_length=30)
+    description: str = Field(default="Documento escaneado", max_length=200)
+    category: str = Field(default="others", max_length=40)
+    rawText: Optional[str] = Field(default=None, max_length=4_000)
 
 
 class OCRResponse(BaseModel):

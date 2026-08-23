@@ -3,6 +3,7 @@ from app.services.context_builder import ContextBuilder
 from app.services.openai_service import OpenAIService
 from app.repositories.firebase_repository import FirebaseRepository
 from app.services.statistics_service import StatisticsService
+from app.core.logger import logger
 
 
 class FinanceService:
@@ -130,16 +131,16 @@ class FinanceService:
         for wallet in wallets:
             try:
                 income += float(wallet.get("totalIncome", 0) or 0)
-            except Exception:
-                pass
+            except (TypeError, ValueError) as exc:
+                logger.warning("Invalid wallet income value", extra={"extra_fields": {"error": str(exc)}})
             try:
                 expenses += float(wallet.get("totalExpenses", 0) or 0)
-            except Exception:
-                pass
+            except (TypeError, ValueError) as exc:
+                logger.warning("Invalid wallet expenses value", extra={"extra_fields": {"error": str(exc)}})
             try:
                 balance += float(wallet.get("amount", 0) or 0)
-            except Exception:
-                pass
+            except (TypeError, ValueError) as exc:
+                logger.warning("Invalid wallet balance value", extra={"extra_fields": {"error": str(exc)}})
 
         saving = income - expenses
         saving_rate = round((saving / income) * 100, 2) if income else 0
