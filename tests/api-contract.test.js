@@ -13,7 +13,7 @@ test("el repositorio cliente conserva el contrato de endpoints financieros", () 
   );
 
   const requiredRoutes = [
-    "/health/",
+    "/health",
     "/metadata/",
     "/users/",
     "/data/financial/",

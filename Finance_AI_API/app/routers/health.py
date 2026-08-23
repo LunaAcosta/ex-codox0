@@ -9,7 +9,7 @@ router = APIRouter(prefix="/health", tags=["Health"])
 
 
 @router.get(
-    "/",
+    "",
     summary="Verificar estado de la API",
     description="""
 Permite verificar el estado general de la API.
@@ -46,8 +46,10 @@ async def health():
         "message": "API funcionando correctamente.",
         "data": {
             "status": "running",
+            "application": settings.APP_NAME,
+            "environment": settings.ENVIRONMENT,
             "firebase": firebase_status,
-            "openai": "Configured",
+            "openai": "Configured" if settings.OPENAI_API_KEY else "Not configured",
             "version": settings.APP_VERSION,
             "timestamp": datetime.now().isoformat(),
         },

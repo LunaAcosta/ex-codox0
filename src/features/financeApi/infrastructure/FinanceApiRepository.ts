@@ -1,19 +1,19 @@
 import { apiClient } from "@/core/network/apiClient";
 
 import {
-  ApiEnvelope,
-  ApiUser,
-  FinanceAiCapability,
-  FinanceAiResult,
-  FinancialData,
-  HealthData,
-  MetadataData,
-  RawAiData,
-  RootData,
-  RecommendationsResponse,
-  PaymentReminder,
-  PaymentReminderInput,
-  UsersResponse,
+    ApiEnvelope,
+    ApiUser,
+    FinanceAiCapability,
+    FinanceAiResult,
+    FinancialData,
+    HealthData,
+    MetadataData,
+    PaymentReminder,
+    PaymentReminderInput,
+    RawAiData,
+    RecommendationsResponse,
+    RootData,
+    UsersResponse,
 } from "../types/FinanceApiTypes";
 
 const responseField: Record<FinanceAiCapability, keyof RawAiData> = {
@@ -30,7 +30,7 @@ export class FinanceApiRepository {
   }
 
   getHealth(): Promise<ApiEnvelope<HealthData>> {
-    return apiClient.get<ApiEnvelope<HealthData>>("/health/");
+    return apiClient.get<ApiEnvelope<HealthData>>("/health");
   }
 
   getMetadata(): Promise<ApiEnvelope<MetadataData>> {
