@@ -1,0 +1,82 @@
+release:
+  application: Ex-Codox
+  version: 1.0.0-rc.1
+  environment: production
+  commit: PENDING
+
+frontend:
+  framework: Expo React Native
+  runtime: Expo Router + TypeScript
+  version: 1.0.0-rc.1
+  public_url: PENDING
+
+api:
+  framework: FastAPI
+  runtime: Python 3.11
+  deployment: Render Docker
+  service: finance-ai-api
+  url: PENDING
+  health: /health
+
+ai:
+  provider: OpenAI
+  model: gpt-5.5
+  ocr_model: gpt-4.1-mini
+
+authentication:
+  provider: Firebase Authentication
+  token: Firebase ID Token
+
+data:
+  provider: Firebase Firestore
+
+prompts:
+  summary: Finance_AI_API/app/prompts/summary.txt
+  analyze: Finance_AI_API/app/prompts/analyze.txt
+  recommend: Finance_AI_API/app/prompts/recommend.txt
+  predict: Finance_AI_API/app/prompts/predict.txt
+  classify: Finance_AI_API/app/prompts/classify.txt
+  chat: Finance_AI_API/app/prompts/chat.txt
+
+services:
+  storage: Firebase Firestore
+  ocr: OpenAI Vision
+  hosting_api: Render
+  distribution_frontend: Expo EAS
+
+tests:
+  automated:
+    frontend: 3
+    backend: 19
+  smoke: PENDING_PUBLIC_EXECUTION
+  adversarial: DOCUMENTED_AND_AUTOMATED_PARTIALLY
+
+observability:
+  request_id: true
+  http_status: true
+  duration_ms: true
+  ai_capability: true
+  cache_hit: true
+  version_in_health: true
+  performance_metrics: PENDING_FINAL_BENCHMARK
+
+security:
+  firebase_uid_authorization: IMPLEMENTED_LOCAL
+  input_validation: IMPLEMENTED_LOCAL
+  ai_limits: PARTIAL_PROVIDER_FAILURE_TESTS_PENDING
+  secrets_in_manifest: false
+
+deployment:
+  api_public: true
+  frontend_public: true
+  verification_external: PENDING
+
+known_limitations:
+  - Public frontend and API URLs must be recorded before final presentation.
+  - Final benchmark metrics have not yet been captured against the public API.
+  - Smoke tests require a temporary Firebase ID Token and demonstration account.
+  - npm audit reports unresolved transitive vulnerabilities.
+  - pip-audit has not been executed in the current environment.
+  - Rate limiting and per-user AI concurrency control are not implemented.
+  - The OpenAI local key exposure requires revocation and rotation.
+  - Docker image build was not locally verified because Docker Desktop was unavailable.

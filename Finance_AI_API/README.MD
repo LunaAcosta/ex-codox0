@@ -80,7 +80,7 @@ URLs útiles:
 - API: http://127.0.0.1:8000
 - Swagger: http://127.0.0.1:8000/docs
 - ReDoc: http://127.0.0.1:8000/redoc
-- Health: http://127.0.0.1:8000/health/
+- Health: http://127.0.0.1:8000/health
 
 ## 6. Ejecución con contenedor (Docker Compose)
 
@@ -133,7 +133,7 @@ Notas importantes:
 1. Health:
 
 ```powershell
-curl.exe -L http://localhost:8000/health/
+curl.exe http://localhost:8000/health
 ```
 
 2. Endpoint principal IA (protegido):
@@ -154,7 +154,7 @@ Requisitos para endpoints protegidos:
 
 | Área | Métodos y rutas |
 |---|---|
-| Sistema | `GET /`, `GET /health/`, `GET /metadata/` |
+| Sistema | `GET /`, `GET /health`, `GET /metadata/` |
 | Usuarios | `GET /users/`, `GET /users/{uid}` |
 | Datos | `GET /data/financial/{uid}`, `GET /data/recommendations/{uid}` |
 | Recomendaciones | `PATCH /data/recommendations/{uid}/{id}/read` |
@@ -168,7 +168,7 @@ Contrato completo y ejemplos:
 - [docs/CURL_EXAMPLES.md](docs/CURL_EXAMPLES.md)
 - [docs/POSTMAN_TESTS.md](docs/POSTMAN_TESTS.md)
 
-## 9. Despliegue mínimo recomendado (siguiente fase)
+## 9. Despliegue mínimo recomendado
 
 Para un servidor pequeño (VPS o PaaS con Docker):
 
@@ -177,7 +177,7 @@ Para un servidor pequeño (VPS o PaaS con Docker):
 3. Cargar secretos en el servidor (`.env` y `firebase-admin.json`).
 4. Ejecutar `docker compose up -d --build`.
 5. Exponer servicio detrás de reverse proxy con TLS.
-6. Monitorear logs y endpoint `/health/`.
+6. Monitorear logs y endpoint `/health`.
 
 ## 10. Pruebas de calidad
 

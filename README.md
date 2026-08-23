@@ -1,385 +1,288 @@
+# Ex-Codox
 
-# Project Title
+Aplicación de finanzas personales para estudiantes y personas que desean organizar sus ingresos, gastos, billeteras y ahorro con asistencia de inteligencia artificial.
 
-## Conexión con Finance AI API
+**Release candidato:** `v1.0.0-rc.1`
+**Estado:** frontend y Finance AI API desplegados
+**Commit:** pendiente de registrar en el manifiesto final
 
-Copia `.env.example` a `.env.local` y configura `EXPO_PUBLIC_API_URL` con una
-URL accesible desde Expo. Inicia el backend desde `Finance_AI_API` con:
+## Problema y propuesta de valor
 
-```bash
+Muchas personas registran sus gastos sin obtener una interpretación útil de sus hábitos financieros. Ex-Codox centraliza ingresos, gastos y billeteras, y agrega estadísticas, OCR, recomendaciones, predicción y un asistente financiero conversacional.
+
+La aplicación está orientada principalmente a estudiantes con ingresos limitados y necesidades de planificación financiera.
+
+## Funcionalidades
+
+- Registro e inicio de sesión con Firebase Authentication.
+- Gestión de billeteras.
+- Registro de ingresos y gastos.
+- Estadísticas financieras.
+- Recomendaciones y alertas.
+- Predicción de tendencias financieras.
+- Asistente conversacional Codoxia.
+- OCR de recibos y facturas.
+- Recordatorios de pagos.
+
+## Arquitectura
+
+```text
+Usuario
+  ↓
+Expo / React Native / Expo Router
+  ↓ Firebase ID Token
+Cliente HTTP Axios
+  ↓ Authorization: Bearer <token>
+Finance AI API pública
+  ├── FastAPI
+  ├── Firebase Admin
+  ├── Firestore
+  └── OpenAI
+```
+
+### Frontend
+
+- Expo 56.
+- React Native.
+- Expo Router.
+- TypeScript.
+- Firebase Authentication y Firestore.
+- Módulos en `src/core`, `src/features` y `src/shared`.
+- Configuración en [app.json](app.json).
+
+### API
+
+- FastAPI y Uvicorn.
+- Python 3.11.
+- Docker y Render.
+- Firebase Admin para tokens y Firestore.
+- OpenAI para capacidades financieras y OCR.
+
+Documentación:
+
+- [Arquitectura actual](docs/arquitectura-actual.md)
+- [Arquitectura objetivo](docs/arquitectura-objetivo.md)
+- [Despliegue](docs/release/deployment.md)
+- [Integración frontend/API](docs/release/frontend-api-integration.md)
+
+## Flujo crítico
+
+```text
+1. El usuario inicia sesión con Firebase Authentication.
+2. Firebase entrega un ID Token.
+3. El frontend envía Authorization: Bearer.
+4. FastAPI valida el token con Firebase Admin.
+5. La API compara el UID solicitado con el UID autenticado.
+6. La API consulta Firestore.
+7. Las capacidades IA usan caché u OpenAI.
+8. La respuesta controlada vuelve a la aplicación.
+```
+
+## Inteligencia artificial
+
+Capacidades disponibles:
+
+```text
+summary, analyze, recommend, predict, classify, chat, ocr
+```
+
+El modelo general y el modelo OCR se configuran en el backend. El frontend no contiene la clave de OpenAI.
+
+Controles implementados:
+
+- Instrucciones del sistema separadas de la entrada del usuario.
+- Contexto financiero limitado.
+- Límite de tokens de salida.
+- Timeout y reintentos limitados.
+- Caché por usuario y capacidad.
+- Validación de respuestas vacías.
+- Restricción al dominio financiero.
+
+## Seguridad
+
+- Firebase ID Token obligatorio para endpoints privados.
+- Autorización por UID mediante `require_same_user()`.
+- Validación Pydantic de textos, cantidades, fechas, identificadores y archivos.
+- Rechazo de campos no autorizados.
+- Límite de tamaño para OCR.
+- Errores públicos sin stack traces ni credenciales.
+- Secretos fuera del repositorio y de la imagen Docker.
+- Logs sin tokens, claves ni contenido financiero innecesario.
+
+Documentación:
+
+- [Matriz de riesgos](docs/security/security-risk-matrix.md)
+- [Controles demostrables](docs/security/demonstrable-controls.md)
+- [Pruebas adversariales](docs/security/adversarial-tests.md)
+
+## Configuración sin secretos
+
+### Frontend
+
+Crear `.env.local` a partir de `.env.example`:
+
+```text
+EXPO_PUBLIC_API_URL=https://URL_PUBLICA_DE_FINANCE_AI_API
+EXPO_PUBLIC_FIREBASE_API_KEY=VALOR_PUBLICO_FIREBASE
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=PROYECTO.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=ID_DEL_PROYECTO
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=BUCKET_PUBLICO
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=ID_PUBLICO
+EXPO_PUBLIC_FIREBASE_APP_ID=ID_PUBLICO
+```
+
+Las variables `EXPO_PUBLIC_*` son configuración pública del Firebase Web SDK. Nunca deben contener credenciales administrativas.
+
+### Backend
+
+Crear el entorno desde [Finance_AI_API/.env.example](Finance_AI_API/.env.example). Las variables privadas se configuran únicamente en el entorno de ejecución:
+
+```text
+OPENAI_API_KEY
+FIREBASE_PROJECT_ID
+FIREBASE_PRIVATE_KEY
+FIREBASE_CLIENT_EMAIL
+FIREBASE_PRIVATE_KEY_ID
+FIREBASE_CLIENT_ID
+```
+
+No subir `.env`, `.env.preview` ni `credentials/firebase-admin.json`.
+
+## Ejecución local
+
+### Frontend
+
+```powershell
+npm ci
+npm start
+```
+
+### Backend
+
+```powershell
+Set-Location Finance_AI_API
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Expo Web y el simulador de iOS pueden usar `http://127.0.0.1:8000`. Android
-Emulator normalmente usa `http://10.0.2.2:8000`; un teléfono físico debe usar
-la IP local de la computadora.
-
-El cliente adjunta automáticamente el Firebase ID token en cada solicitud. La
-pestaña **Herramientas IA** consume estado, metadata, usuario autenticado y las
-operaciones `summary`, `analyze`, `recommend`, `predict` y `classify`. El chat
-financiero utiliza `POST /ai/chat`.
-
-El escáner de recibos envía la imagen como `multipart/form-data` a
-`POST /ai/ocr`. La imagen se procesa en memoria y la clave de OpenAI permanece
-exclusivamente en Finance AI API.
-
-A brief description of what this project does and who it's for
-
-# EX-CODOX
-
-## 1. Información General 
-
-**Módulo:** Módulo 4 - Desarrollo de Aplicaciones con IA      
-**Semana:** Semana 1 - Diagnóstico y arquitectura inicial
-
-**Integrantes del equipo**
-
-Emely Alexandra Guevara Jimenez   
-Natalia Alexandra Trigueros Blanco        
-Kevin Alexander Luna Acosta
-
-
-## 2. Descripción del problema
-
-La gestión de las finanzas personales representa un desafío para muchos estudiantes universitarios debido a la falta de planificación financiera, ingresos limitados y escasos conocimientos sobre educación financiera. Estas dificultades pueden ocasionar gastos innecesarios, problemas de ahorro y una administración ineficiente de los recursos económicos.
-
-Aunque existen aplicaciones para registrar ingresos y gastos, la mayoría únicamente permiten almacenar información financiera sin realizar un análisis inteligente del comportamiento económico del usuario ni ofrecer recomendaciones personalizadas.
-
-Ex-Codox busca resolver esta problemática integrando Inteligencia Artificial para analizar los hábitos financieros del usuario, generar recomendaciones, emitir alertas preventivas y proporcionar asistencia conversacional que facilite una mejor planificación financiera.
-
-
-## 3. Usuarios o Beneficiarios
-
-| Usuario / Beneficiario                                  | Necesidad principal                                | Cómo ayuda la aplicación                                                                                                  |
-| ------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Estudiantes universitarios                              | Controlar sus ingresos, gastos y ahorro.           | Permite registrar transacciones, administrar billeteras y recibir recomendaciones financieras personalizadas mediante IA. |
-| Personas interesadas en mejorar sus finanzas personales | Organizar y analizar su comportamiento financiero. | Proporciona estadísticas, alertas inteligentes, proyecciones y un asistente financiero conversacional.                    |
-
----
-
-
-## 4. Descripción de la Solución
-
-Ex-Codox es una aplicación móvil que facilita la administración de las finanzas personales mediante una interfaz intuitiva y herramientas inteligentes.
-
-La aplicación permite:
-
-* Registro e inicio de sesión de usuarios.
-* Gestión de billeteras.
-* Registro de ingresos y gastos.
-* Visualización de estadísticas financieras.
-* Captura de recibos mediante OCR.
-* Generación de recomendaciones financieras.
-* Alertas inteligentes.
-* Proyecciones de saldo.
-* Asistente financiero conversacional (Codox IA).
-
-### Entrada
-
-* Información financiera registrada por el usuario.
-* Consultas realizadas al asistente financiero.
-* Imágenes de recibos o facturas.
-
-### Procesamiento
-
-Los datos son almacenados en Firebase Firestore y procesados mediante modelos de Inteligencia Artificial de OpenAI para generar análisis financieros personalizados.
-
-### Salida
-
-* Estadísticas financieras.
-* Recomendaciones inteligentes.
-* Alertas preventivas.
-* Proyecciones financieras.
-* Respuestas del chatbot.
-* Registro automático de transacciones mediante OCR.
-
----
-
-
-## 5. Componente de Inteligencia Artificial      
- 
-
-| Elemento                                  | Descripción                                                                                                                                                                                       |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Tipo de IA utilizada**                  | Inteligencia Artificial Generativa (LLM) y Procesamiento de Lenguaje Natural (NLP).                                                                                                               |
-| **Modelo, algoritmo, servicio o técnica** | OpenAI API utilizando los modelos GPT-4o Mini y GPT-4.1 Mini.                                                                                                                                     |
-| **Datos de entrada**                      | Historial de transacciones, billeteras, ingresos, gastos, consultas del usuario e imágenes de recibos para OCR.                                                                                   |
-| **Resultado generado por la IA**          | Recomendaciones financieras, análisis de hábitos de consumo, alertas inteligentes, proyecciones financieras, respuestas conversacionales y extracción automática de información desde recibos.    |
-| **Métrica o forma de evaluación**         | Validación funcional mediante pruebas de la aplicación, verificando la coherencia de las respuestas, la utilidad de las recomendaciones y el correcto funcionamiento del OCR.                     |
-| **Limitaciones actuales**                 | El chatbot y el sistema de recomendaciones dependen de modelos preentrenados y de la calidad de los datos registrados por el usuario, por lo que su nivel de personalización aún puede mejorarse. |
-
-
-
-La Inteligencia Artificial es uno de los componentes principales de Ex-Codox. Mediante la integración de modelos preentrenados de OpenAI, la aplicación analiza la información financiera registrada por el usuario para generar recomendaciones personalizadas, detectar patrones de gasto, elaborar proyecciones de saldo y responder consultas en lenguaje natural a través de Codox IA. Además, la IA participa en el procesamiento de recibos mediante OCR, facilitando el registro automático de transacciones y mejorando la experiencia de uso.
-
-
-## 6. Estado Actual del Proyecto
-
-### Funcionalidades que ya funcionan
-
-- **Autenticación de usuarios:** Registro e inicio de sesión con Firebase Authentication.
-- **Gestión de billeteras:** Crear, editar y eliminar billeteras para organizar fondos.
-- **Registro de transacciones:** Agregar ingresos y gastos con categorías, montos y descripciones.
-- **Visualización de estadísticas:** Gráficas y tablas que muestran el comportamiento financiero.
-- **Interfaz responsiva:** Navegación con pestañas y modales para interacción intuitiva.
-- **Autenticación con contexto:** Sistema de autenticación persistente con React Context.
-
-### Funcionalidades incompletas o pendientes
-
-- **OCR mejorado:** Optimizar la extracción de información de recibos (imageService y ocrService).
-- **Sistema de recomendaciones avanzado:** Mejorar la lógica de recomendaciones basada en patrones de gasto (recommendationService).
-- **Alertas inteligentes:** Implementar notificaciones proactivas cuando se detecten gastos anómalos.
-- **Proyecciones financieras:** Desarrollar algoritmo de predicción de saldo futuro.
-- **Mejora del chat:** Expandir las capacidades del asistente Codox IA con más contexto financiero.
-- **Exportación de reportes:** Permitir descargar informes en PDF o CSV.
-
-### Evidencias actuales
-
-- Aplicación funcional en desarrollo usando Expo.
-- Sistema de autenticación y gestión de usuarios implementado.
-- Interfaz base con navegación por pestañas completada.
-- Servicios conectados a Firebase Firestore para almacenamiento de datos.
-- Integración con OpenAI API para funciones de IA (chatbot y recomendaciones)
-
----
-
-
-## 7. Arquitectura Actual
-
-Ex-Codox utiliza una arquitectura cliente-servidor con componentes de IA integrados. La aplicación se estructura en capas de presentación, lógica de negocios y acceso a datos.
-
-**Componentes actuales:**
-
-| Componente | Descripción | Estado actual |
-|---|---|---|
-| **Interfaz de usuario** | React Native con Expo. Pantallas de autenticación, gestión de billeteras, transacciones, estadísticas y asistente IA. | ✅ Funcional |
-| **Lógica de negocio** | Servicios TypeScript (financialAssistantService, recommendationService, transactionService, walletService, userService). | ✅ Parcialmente funcional |
-| **Componente IA** | Integración con OpenAI API (GPT-4o Mini, GPT-4.1 Mini) para chatbot, recomendaciones y OCR. | ✅ Funcional |
-| **Base de datos** | Firebase Firestore para almacenamiento de usuarios, transacciones, billeteras y datos de sesión. | ✅ Funcional |
-| **Servicios externos** | Firebase Authentication, OpenAI API, Cloudinary (almacenamiento de imágenes). | ✅ Funcional |
-| **Configuración** | Firebase config centralizada en config/firebase.tsx, variables de entorno para credenciales. | ✅ Funcional |
-
-**Flujo de arquitectura:**
-
-```
-[Interfaz (React Native/Expo)]
-         ↓
-[Componentes React + Hooks]
-         ↓
-[Servicios (lógica de negocio)]
-         ↓
-[Firebase Firestore] ← → [OpenAI API] ← → [Cloudinary]
-         ↓
-[Context API (Autenticación)]
-```
-
-**Estructura de directorios:**
-
-- `src/app/`: Pantallas principales, rutas y navegación de la aplicación mediante Expo Router.
-- `src/components/`: Componentes reutilizables de la interfaz de usuario (botones, tarjetas, listas, modales, encabezados, etc.).
-- `src/constants/`: Constantes globales como temas, colores, configuraciones y datos estáticos.
-- `src/hooks/`: Hooks personalizados para reutilizar lógica de negocio y acceso a datos.
-- `services/`: Lógica de negocio, integración con inteligencia artificial, OCR, gestión de transacciones, billeteras, usuarios y otros servicios externos.
-- `contexts/`: Gestión del estado global de la aplicación, incluyendo la autenticación de usuarios.
-- `config/`: Configuración e inicialización de servicios externos, como Firebase Authentication y Firestore.
-- `utils/`: Funciones auxiliares y utilidades compartidas para el procesamiento de datos y estilos.
-- `assets/`: Recursos estáticos de la aplicación, como íconos y otros archivos multimedia.
-- `images/`: Imágenes utilizadas en la interfaz de usuario.
-- `scripts/`: Scripts auxiliares para tareas de mantenimiento y configuración del proyecto.
-- `types.ts`: Definición de tipos e interfaces globales utilizadas en toda la aplicación.
-- `app.json`: Archivo de configuración principal del proyecto Expo.
-- `package.json`: Gestión de dependencias, scripts y metadatos del proyecto.
-- `tsconfig.json`: Configuración del compilador de TypeScript.
-- `README.md`: Documentación general del proyecto, instrucciones de instalación, ejecución y descripción de la solución.
-
----
-
-
-## 8. Arquitectura Objetivo
-El proyecto debería evolucionar hacia una arquitectura modular que separe claramente la interfaz, la lógica de negocio, la inteligencia artificial y el almacenamiento de datos. La meta es que Ex-Codox siga funcionando como una app móvil con experiencia fluida para el usuario, mientras la IA y los servicios de datos se mantienen desacoplados para facilitar mantenimiento y escalabilidad.
-
-### Arquitectura propuesta
-- Interfaz móvil: React Native + Expo Router para pantallas de autenticación, billeteras, transacciones, estadísticas y asistente financiero.
-- Servicios de negocio: módulos TypeScript especializados para transacciones, usuarios, billeteras, recomendaciones y OCR.
-- Servicio inteligente: integración con OpenAI para análisis financiero, recomendaciones, respuestas conversacionales y extracción de información desde recibos.
-- Persistencia: Firebase Authentication + Firestore para usuarios, transacciones y perfiles financieros.
-- Variables de entorno: configuración externa para claves de IA y credenciales de servicios.
-- Despliegue: Expo EAS Build para distribución móvil y Firebase/servicios cloud para almacenamiento y autenticación.
-- Observabilidad: logs de operaciones, manejo de errores y métricas básicas de uso del asistente financiero.
-
-### Pruebas mínimas esperadas
-- Pruebas unitarias para servicios de cálculo financiero y normalización de categorías.
-- Pruebas de integración para autenticación y persistencia en Firestore.
-- Pruebas de flujo de usuario para registro, login, creación de transacciones y uso del asistente IA.
-
-### Consideraciones de seguridad
-- No almacenar claves privadas en el repositorio.
-- Usar variables de entorno y reglas de seguridad en Firestore.
-- Limitar el acceso a datos financieros sensibles.
-- Validar entradas del usuario antes de enviarlas a servicios externos.
-
-### Diagrama de arquitectura objetivo
-```text
-[React Native / Expo UI]
-        ↓
-[Hooks y componentes reutilizables]
-        ↓
-[Servicios de negocio y IA]
-   ├─ Transacciones / Wallets / Usuarios
-   ├─ Recomendaciones / Chat financiero
-   └─ OCR y extracción de documentos
-        ↓
-[Firebase Auth + Firestore + Storage]
-        ↓
-[OpenAI API / modelos generativos]
-```
-
-Documento detallado: [docs/arquitectura-objetivo.md](docs/arquitectura-objetivo.md)
----
-## 9. Estructura del Repositorio
-La organización actual del proyecto está orientada a una aplicación móvil modular con carpetas para interfaz, servicios y configuración.
+Health local:
 
 ```text
-EX-CODOX0/
-assets/
-config/
-contexts/
-docs/
-images/
-scripts/
-services/
-src/
-  app/
-  components/
-  constants/
-  hooks/
-utils/
-app.json
-package.json
-tsconfig.json
-types.ts
-README.md
-.env.example
+http://127.0.0.1:8000/health
 ```
 
-### Descripción de las carpetas principales
-- assets/ y images/: recursos visuales de la app.
-- config/: inicialización de Firebase y otros servicios externos.
-- contexts/: manejo del estado global de autenticación.
-- docs/: documentación técnica y arquitectura objetivo.
-- services/: lógica de negocio y conexión con OpenAI, OCR, transacciones y usuarios.
-- src/app/: pantallas principales y rutas de navegación con Expo Router.
-- src/components/: componentes reutilizables de la interfaz.
-- src/constants/ y src/hooks/: datos estáticos y hooks personalizados.
-- utils/: utilidades y funciones auxiliares compartidas.
-- scripts/: tareas auxiliares de mantenimiento.
----
-## 10. Instalación y Ejecución
-### Requisitos previos
-- Node.js 20 o superior.
-- npm o yarn.
-- Expo CLI.
-- Android Studio o Xcode para emulación móvil (opcional).
-- Una cuenta en Firebase y una clave de API de OpenAI.
+## API y despliegue público
 
-### Instalación
-```bash
-npm install
-cp .env.example .env
+- Plataforma API: Render.
+- Runtime: Docker.
+- Servicio: `finance-ai-api`.
+- Health: `GET /health`.
+- URL pública de API: pendiente de registrar.
+- URL pública de frontend: pendiente de registrar.
+
+La configuración está en [Finance_AI_API/render.yaml](Finance_AI_API/render.yaml). Las URLs reales deben registrarse en el manifiesto antes de la presentación final.
+
+## Docker
+
+```powershell
+docker compose -f Finance_AI_API/docker-compose.yml config --quiet
+docker compose -f Finance_AI_API/docker-compose.yml up -d --build
 ```
 
-### Ejecución
-```bash
-npx expo start
+El Dockerfile no copia secretos. En desarrollo, Compose carga `.env` y monta Firebase Admin en modo lectura. En Render, los secretos se configuran como variables privadas.
+
+## Pruebas
+
+### Frontend
+
+```powershell
+npm run test
+npm run typecheck
+npm run lint
+npm run ci
 ```
-Luego seleccionar la plataforma deseada desde la interfaz de Expo:
-- Android
-- iOS
 
+### Backend
 
-### Variables de entorno
-Crear un archivo .env con los valores correspondientes.
+```powershell
+Set-Location Finance_AI_API
+python -m unittest discover -s tests -v
+python -m compileall -q app
+python -m pip check
+```
 
-| Variable | Descripción | Obligatoria |
-|---|---|---|
-| EXPO_PUBLIC_OPENAI_API_KEY | Clave para consumir los modelos de OpenAI en chat, recomendaciones y OCR. | Sí |
-| EXPO_PUBLIC_FIREBASE_API_KEY | API key de Firebase. | No |
-| EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN | Dominio de autenticación de Firebase. | No |
-| EXPO_PUBLIC_FIREBASE_PROJECT_ID | ID del proyecto Firebase. | No |
-| EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET | Bucket de almacenamiento. | No |
-| EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID | Sender ID de Firebase Cloud Messaging. | No |
-| EXPO_PUBLIC_FIREBASE_APP_ID | ID de la app Firebase. | No |
+La suite backend cubre autenticación, autorización, validación, OCR, caché, errores de proveedor y contratos API. Los smoke tests están en [Finance_AI_API/tests/smoke/test_smoke_api.py](Finance_AI_API/tests/smoke/test_smoke_api.py).
 
-Archivo de ejemplo: [.env.example](.env.example)
----
-## 11. Datos Utilizados
-| Fuente de datos | Tipo de datos | Uso dentro del proyecto | Observaciones |
-|---|---|---|---|
-| Registros de usuario | Nombre, correo, sesión autenticada | Inicio de sesión, perfil y persistencia | Datos sensibles; deben protegerse mediante reglas de Firestore |
-| Transacciones financieras | Ingresos, gastos, montos, categorías, fechas, descripciones | Estadísticas, análisis y recomendaciones | Requieren validación y normalización de categorías |
-| Billeteras | Nombre, saldo y estado | Organización del dinero y cálculo del balance disponible | Deben mantenerse consistentes con las transacciones |
-| Imágenes de recibos o documentos | Archivos de imagen y/o PDF | OCR para extracción automática de datos | La calidad depende del escaneo y del tipo de documento |
-| Consultas del usuario al asistente IA | Texto libre | Generación de respuestas y recomendaciones financieras | Se recomienda filtrar y validar entradas para evitar uso indebido |
+## CI/CD
 
-### Consideraciones
-- Los datos son principalmente privados y relacionados con información financiera personal.
-- Contienen información sensible, por lo que deben manejarse con cuidado.
-- Se requiere limpieza y validación de categorías, fechas y montos.
-- La calidad de los datos puede variar según la forma en que el usuario registre sus transacciones o suba documentos.
----
-## 12. Riesgos Técnicos y Deuda Técnica
-| Riesgo | Categoría | Probabilidad | Impacto | Mitigación propuesta |
-|---|---|---|---|---|
-| Exposición de credenciales y claves de servicio | Seguridad | Media | Alto | Mover todas las credenciales a variables de entorno y revisar reglas de acceso |
-| Dependencia del modelo de IA para tareas sensibles | Modelo | Media | Medio | Implementar validaciones, prompts controlados y fallback cuando no haya datos suficientes |
-| Calidad limitada del OCR en documentos poco claros | Datos / Modelo | Alta | Medio | Mejorar el pipeline de extracción, agregar reglas heurísticas y validación manual |
-| Falta de pruebas automatizadas | Código | Alta | Medio | Incorporar pruebas unitarias e integración desde la siguiente iteración |
-| Arquitectura aún fuertemente acoplada a servicios externos | Código | Media | Medio | Separar mejor capas y abstraer servicios para facilitar mantenimiento y mocks |
-| Ausencia de despliegue y monitoreo operativo | Despliegue | Media | Medio | Definir canal de despliegue con Expo EAS y métricas básicas de uso y errores |
----
-## 13. Plan de Mejora por Semana
-| Semana | Mejora esperada | Evidencia esperada |
-|---|---|---|
-| Semana 2 | API inteligente y contratos de entrada/salida | Servicio de IA documentado y probado manualmente |
-| Semana 3 | Pruebas y CI/CD | Tests automatizados y pipeline básico de validación |
-| Semana 4 | Contenedor o despliegue | Configuración de despliegue con Expo EAS o entorno simulado |
-| Semana 5 | Observabilidad y rendimiento | Logs, métricas básicas y evaluación de tiempos de respuesta |
-| Semana 6 | Seguridad, documentación y defensa final | README final, arquitectura objetivo, demo y presentación |
----
-## 14. Limitaciones Actuales
-- El OCR funciona con un fallback y depende de la calidad de la imagen.
-- El asistente financiero ofrece respuestas útiles, pero aún necesita más contexto del usuario para personalizar mejor sus recomendaciones.
-- No existe todavía una capa de backend independiente; la lógica se concentra en servicios del cliente.
-- Falta una estrategia completa de pruebas automatizadas y monitoreo.
-- La exportación de reportes y notificaciones proactivas siguen siendo pendientes.
----
-## 15. Evidencias
-| Evidencia | Enlace o ubicación | Descripción |
-|---|---|---|
-| Arquitectura objetivo | [docs/arquitectura-objetivo.md](docs/arquitectura-objetivo.md) | Documento con la propuesta de arquitectura futura del proyecto |
-| Servicio de IA financiera | [services/financialAssistantService.ts](services/financialAssistantService.ts) | Lógica del asistente financiero con OpenAI |
-| OCR y extracción documental | [services/ocrService.ts](services/ocrService.ts) | Proceso de extracción de datos desde documentos e imágenes |
-| Configuración de Firebase | [config/firebase.tsx](config/firebase.tsx) | Inicialización del backend y autenticación |
-| Variables de entorno de ejemplo | [.env.example](.env.example) | Plantilla para configurar credenciales externas |
----
-## 16. Créditos y Referencias
-- Expo y Expo Router para la aplicación móvil.
-- React Native y TypeScript para la interfaz y la lógica.
-- Firebase Authentication y Firestore para autenticación y persistencia.
-- OpenAI para inteligencia artificial generativa y OCR.
-- react-native-gifted-charts, expo-image-picker y expo-document-picker para visualización y carga de documentos.
-- Documentación oficial de Expo, Firebase y OpenAI.
----
-## 17. Checklist de Revisión
-Antes de entregar, verificar:
-- [x] El problema está claramente descrito.
-- [x] Se explica quién usará o se beneficiará de la aplicación.
-- [x] Se identifica dónde está la IA.
-- [x] Se describen entradas y salidas.
-- [x] Se documenta el estado actual del proyecto.
-- [x] Se incluye arquitectura actual.
-- [x] Se incluye arquitectura objetivo.
-- [x] Se explica cómo ejecutar el proyecto.
-- [x] Se identifican riesgos técnicos.
-- [x] Se presenta plan de mejora por semana.
-- [x] No se incluyen claves, contraseñas ni tokens privados.
+El workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) se ejecuta en push a `main` o `master`, pull requests y ejecución manual.
+
+Incluye:
+
+- `npm ci`, tests frontend, TypeScript y ESLint.
+- Instalación de requirements Python.
+- `pip check`, tests backend y compilación Python.
+
+Documentación: [docs/release/ci-cd.md](docs/release/ci-cd.md).
+
+## Observabilidad
+
+La API registra eventos JSON con `request_id`, estado HTTP, duración, evento, capability IA, cache hit y métricas por etapa IA.
+
+Las respuestas incluyen:
+
+- `X-Request-ID`.
+- `X-Process-Time-Ms`.
+
+Documentación: [docs/release/observability.md](docs/release/observability.md).
+
+## Rendimiento
+
+El benchmark está en [Finance_AI_API/benchmark_baseline.py](Finance_AI_API/benchmark_baseline.py) y mide solicitudes, éxitos, fallos, tasa de error, p50, p95 y máximo.
+
+Las métricas finales aún deben capturarse contra la API pública. No se presentan valores estimados.
+
+Documentación: [docs/release/performance.md](docs/release/performance.md).
+
+## Rollback
+
+El procedimiento está documentado en [docs/release/rollback-plan.md](docs/release/rollback-plan.md) e incluye activadores, responsables, restauración de API y frontend, compatibilidad de datos, backup y verificaciones posteriores.
+
+## Release manifest
+
+El manifiesto está en [release-manifest.yml](release-manifest.yml). Contiene versión, componentes, modelos, pruebas, observabilidad, despliegue y limitaciones sin secretos.
+
+## Limitaciones conocidas
+
+- Las URLs públicas deben registrarse.
+- Las métricas finales deben obtenerse contra producción.
+- Los smoke tests públicos requieren cuenta de demostración y token temporal.
+- `npm audit` reporta vulnerabilidades transitivas pendientes.
+- `pip-audit` todavía no se ha ejecutado.
+- No hay rate limiting por usuario.
+- No hay control de concurrencia específico para OpenAI.
+- La clave OpenAI expuesta localmente debe revocarse y rotarse.
+- No se ha ejecutado un rollback real en producción.
+
+## Evidencia final
+
+Antes de crear el tag `v1.0.0-rc.1`, conservar:
+
+- Commit final.
+- Resultado de CI.
+- Pruebas backend y frontend.
+- Smoke tests públicos.
+- Respuesta `/health`.
+- Métricas del benchmark.
+- Evidencia de autenticación y UID.
+- Evidencia de errores controlados.
+- Confirmación de rotación de secretos.
+- URL pública de frontend y API.
+
+## Equipo
+
+- Emely Alexandra Guevara Jimenez
+- Natalia Alexandra Trigueros Blanco
+- Kevin Alexander Luna Acosta
