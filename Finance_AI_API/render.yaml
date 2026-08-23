@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: finance-ai-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_NAME
+        value: Finance AI API
+      - key: APP_VERSION
+        value: 1.0.0-rc.1
+      - key: ENVIRONMENT
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+      - key: CORS_ORIGINS
+        value: "https://your-frontend.onrender.com,http://localhost:8081"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.5
+      - key: OPENAI_MAX_OUTPUT_TOKENS
+        value: 220
+      - key: OPENAI_TIMEOUT_SECONDS
+        value: 30
+      - key: OPENAI_MAX_RETRIES
+        value: 1
+      - key: OPENAI_MAX_CONTEXT_CHARS
+        value: 12000
+      - key: OPENAI_OCR_MODEL
+        value: gpt-4.1-mini
+      - key: OCR_MAX_FILE_SIZE_MB
+        value: 10
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY_ID
+        sync: false
+      - key: FIREBASE_CLIENT_ID
+        sync: false

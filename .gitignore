@@ -32,10 +32,12 @@ yarn-error.*
 
 # Firebase config
 firebase.tsx
+Finance_AI_API/credentials/*.json
 
 # local env files
 .env
 .env*.local
+.env*.preview
 
 # typescript
 *.tsbuildinfo
