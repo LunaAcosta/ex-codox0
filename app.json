@@ -2,27 +2,31 @@
   "expo": {
     "name": "Ex-Codox",
     "slug": "Ex-Codox",
-    "version": "1.0.0",
+    "version": "1.0.0-rc.1",
     "orientation": "portrait",
     "icon": "./assets/images/iconstart.png",
     "scheme": "expensetrackerai",
     "userInterfaceStyle": "automatic",
+
     "ios": {
       "icon": "./assets/expo.icon"
     },
+
     "android": {
+      "package": "com.kevinluna.excodox",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/iconstart.png",
-        "backgroundImage": "./assets/images/iconstart.png",
         "monochromeImage": "./assets/images/iconstart.png"
       },
       "predictiveBackGestureEnabled": false
     },
+
     "web": {
       "output": "static",
       "favicon": "./assets/images/iconstart.png"
     },
+
     "plugins": [
       "expo-router",
       [
@@ -36,11 +40,20 @@
         }
       ],
       "expo-image",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-web-browser"
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fdb1031c-4c31-4e66-b378-a9142847e1a8"
+      }
     }
   }
 }
